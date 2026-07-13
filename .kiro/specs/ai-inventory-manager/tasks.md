@@ -20,20 +20,20 @@ A mobile-first inventory and purchasing platform for micro retail businesses, bu
 
 ### Phase 0: Project Foundation
 
-- [ ] 0. Bootstrap Expo project and configure monorepo structure 🟢
-  - [ ] 0.1 Initialize Expo managed-workflow project with TypeScript template
+- [x] 0. Bootstrap Expo project and configure monorepo structure 🟢
+  - [x] 0.1 Initialize Expo managed-workflow project with TypeScript template
     - Run `npx create-expo-app` with `--template expo-template-blank-typescript`
     - Configure `tsconfig.json` (strict mode, path aliases `@/` → `src/`)
     - Add `.nvmrc` / `.node-version` for consistent Node version across team
     - _Requirements: 15.7_
 
-  - [ ] 0.2 Install and configure core dependencies
+  - [x] 0.2 Install and configure core dependencies
     - Install: `expo-router`, `expo-camera`, `react-native-mmkv`, `zustand`, `@tanstack/react-query`, `nativewind`, `react-hook-form`, `zod`, `@supabase/supabase-js`
     - Install dev tools: `jest`, `fast-check`, `@testing-library/react-native`, `ts-jest`
     - Pin all dependency versions; add `overrides`/`resolutions` for known peer conflicts
     - _Requirements: 15.7_
 
-  - [ ] 0.3 Configure Expo Router file-based routing skeleton
+  - [x] 0.3 Configure Expo Router file-based routing skeleton
     - Create `src/app/(auth)/login.tsx` and `src/app/(auth)/register.tsx` (placeholder screens)
     - Create `src/app/(app)/_layout.tsx` with authenticated tab-bar layout
     - Create stub screen files for all top-level routes: `dashboard`, `inventory`, `receive`, `count`, `orders`, `recommendations`, `reports`
@@ -45,14 +45,14 @@ A mobile-first inventory and purchasing platform for micro retail businesses, bu
     - Add `scripts.test` in `package.json`; add `--runInBand` flag for CI
     - _Requirements: Design Testing Strategy_
 
-- [ ] 1. Initialize Supabase project and local dev environment 🟢
-  - [ ] 1.1 Set up Supabase CLI and local stack
+- [x] 1. Initialize Supabase project and local dev environment 🟢
+  - [x] 1.1 Set up Supabase CLI and local stack
     - Run `supabase init` in repo root; commit `supabase/` directory
     - Add `supabase start` / `supabase stop` npm scripts
     - Document local stack URLs in `README.md` (Studio, API, DB)
     - _Requirements: 14.4_
 
-  - [ ] 1.2 Configure GitHub Actions CI skeleton
+  - [x] 1.2 Configure GitHub Actions CI skeleton
     - Create `.github/workflows/ci.yml`: install deps → type-check → lint → unit tests
     - Add `supabase/migrations/` artifact caching step
     - Add branch protection rule comment in `README.md` (main branch requires CI pass)
@@ -63,8 +63,8 @@ A mobile-first inventory and purchasing platform for micro retail businesses, bu
 
 ### Phase 1: Supabase Schema, Migrations, RLS, and Seed Data
 
-- [ ] 2. Create core tenant and user migration 🟢
-  - [ ] 2.1 Write migration: tenant and user tables
+- [x] 2. Create core tenant and user migration 🟢
+  - [x] 2.1 Write migration: tenant and user tables
     - Create `supabase/migrations/<timestamp>_01_tenant_users.sql`
     - Tables: `businesses`, `locations`, `user_profiles`, `user_roles`
     - Include UUID PKs, FK constraints, `created_at`/`updated_at` defaults
@@ -76,8 +76,8 @@ A mobile-first inventory and purchasing platform for micro retail businesses, bu
     - Additional policy: only `owner` role can INSERT/UPDATE `user_roles`
     - _Requirements: 9.4, 12.3, 14.2_
 
-- [ ] 3. Write migration: product catalog tables 🟢
-  - [ ] 3.1 Create product catalog migration
+- [x] 3. Write migration: product catalog tables 🟢
+  - [x] 3.1 Create product catalog migration
     - Create `supabase/migrations/<timestamp>_02_product_catalog.sql`
     - Tables: `suppliers`, `products`, `product_barcodes`, `product_variants`
     - Include `UNIQUE (business_id, sku)` on products; `UNIQUE (business_id, barcode_value)` on product_barcodes
@@ -89,14 +89,14 @@ A mobile-first inventory and purchasing platform for micro retail businesses, bu
     - Add role-gate INSERT/UPDATE on `products`, `product_barcodes`, `product_variants`: requires `owner` or `purchasing`
     - _Requirements: 9.2, 9.4, 14.2_
 
-- [ ] 4. Write migration: inventory ledger and balances 🟢
-  - [ ] 4.1 Create ledger migration
+- [x] 4. Write migration: inventory ledger and balances 🟢
+  - [x] 4.1 Create ledger migration
     - Create `supabase/migrations/<timestamp>_03_inventory_ledger.sql`
     - Tables: `inventory_movements` (append-only), `inventory_balances`
     - Add indexes: `idx_movements_sku_location`, `idx_movements_reference`, `idx_movements_type_source`
     - _Requirements: 1.1, 14.1, 14.7_
 
-  - [ ] 4.2 Implement ledger triggers and consistency function
+  - [x] 4.2 Implement ledger triggers and consistency function
     - Create `prevent_movement_mutation()` trigger (blocks UPDATE/DELETE on `inventory_movements`)
     - Create `update_inventory_balance()` AFTER INSERT trigger (updates materialized balance atomically)
     - Implement weighted average cost recalculation inside `update_inventory_balance()` for `movement_type = 'receive'`
@@ -119,8 +119,8 @@ A mobile-first inventory and purchasing platform for micro retail businesses, bu
     - Generate arbitrary movement inputs; assert all required fields are non-null in the resulting row
     - **Validates: Requirements 1.1, 1.6**
 
-- [ ] 5. Write migration: purchase orders and stock counts 🟢
-  - [ ] 5.1 Create PO and stock count migration
+- [x] 5. Write migration: purchase orders and stock counts 🟢
+  - [x] 5.1 Create PO and stock count migration
     - Create `supabase/migrations/<timestamp>_04_purchase_orders.sql`
     - Tables: `purchase_orders`, `purchase_order_lines`
     - Create `supabase/migrations/<timestamp>_05_stock_counts.sql`
@@ -135,7 +135,7 @@ A mobile-first inventory and purchasing platform for micro retail businesses, bu
     - _Requirements: 9.2, 9.4_
 
 - [ ] 6. Write migration: alerts, Square events, AI, and offline queue 🟢
-  - [ ] 6.1 Create remaining table migrations
+  - [x] 6.1 Create remaining table migrations
     - Create `supabase/migrations/<timestamp>_06_alerts.sql`: `alerts` table
     - Create `supabase/migrations/<timestamp>_07_square_events.sql`: `square_sync_events` with `UNIQUE (square_event_id)`; index `idx_square_event_id`
     - Create `supabase/migrations/<timestamp>_08_ai_recommendations.sql`: `recommendations`, `recommendation_feedback`
