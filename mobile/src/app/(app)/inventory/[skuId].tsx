@@ -16,7 +16,6 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import React, { useCallback, useEffect, useState } from 'react';
 import {
   ActivityIndicator,
-  Alert,
   KeyboardAvoidingView,
   Platform,
   Pressable,
@@ -26,6 +25,7 @@ import {
   TextInput,
   TouchableOpacity,
   View,
+  Alert,
 } from 'react-native';
 
 import { useProduct, useUpdateProduct } from '@/hooks/useProducts';
@@ -256,8 +256,8 @@ export default function ProductDetailScreen() {
   }, [product, form, updateProduct]);
 
   const handleAdjustStock = useCallback(() => {
-    Alert.alert('Coming soon', 'Stock adjustment UI is implemented in task 16.3.');
-  }, []);
+    router.push(`/(app)/inventory/adjust?skuId=${skuId}`);
+  }, [router, skuId]);
 
   // Loading / error states
   if (productLoading) {

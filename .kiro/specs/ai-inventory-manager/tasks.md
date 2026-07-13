@@ -305,14 +305,14 @@ A mobile-first inventory and purchasing platform for micro retail businesses, bu
     - Generate arbitrary `(received_qty, damaged_qty)` pairs where both ≥ 0; assert exactly one `receive` movement and at most one `damage` adjustment; assert net balance increment equals `received_qty - damaged_qty`
     - **Validates: Requirements 2.3, 2.5**
 
-- [ ] 15. Build receiving mobile UI 🟢
-  - [-] 15.1 Build PO selection and ad hoc receive screens
+- [x] 15. Build receiving mobile UI 🟢
+  - [x] 15.1 Build PO selection and ad hoc receive screens
     - `src/app/(app)/receive/index.tsx`: list open/partially-received POs; "Ad Hoc Receive" button
     - `src/app/(app)/receive/[poId].tsx`: show PO lines with ordered/received quantities; barcode scan per line
     - Pre-populate product name and expected quantity from PO_Line after barcode scan
     - _Requirements: 2.1, 2.2_
 
-  - [-] 15.2 Implement offline queue for receive actions
+  - [x] 15.2 Implement offline queue for receive actions
     - On submit while offline: serialize action to `OfflineAction` struct, persist to MMKV via `offlineQueueStore`
     - Display "Pending sync" badge on the receive confirmation screen
     - Sync on reconnect via `syncStore.processPendingActions()` (FIFO order)
@@ -329,8 +329,8 @@ A mobile-first inventory and purchasing platform for micro retail businesses, bu
 
 ### Phase 6: Stock Adjustments and Audits / Cycle Counts
 
-- [ ] 16. Implement stock adjustment workflow 🟢
-  - [-] 16.1 Create adjustment Edge Function
+- [x] 16. Implement stock adjustment workflow 🟢
+  - [x] 16.1 Create adjustment Edge Function
     - `supabase/functions/adjust-stock/index.ts`: accepts `{ sku_id, location_id, quantity_delta, reason_code, notes?, idempotency_key }`
     - Validate `reason_code` is in the allowed set; require non-empty `notes` when `reason_code = 'other'`
     - Read current balance snapshot for `before_quantity`; compute `after_quantity`
@@ -338,13 +338,13 @@ A mobile-first inventory and purchasing platform for micro retail businesses, bu
     - Otherwise: INSERT adjustment movement immediately; record in `offline_queue_log`
     - _Requirements: 5.1, 5.2, 5.3, 5.4, 5.5, 5.6_
 
-  - [-] 16.2 Build adjustment approval flow (Owner only)
+  - [x] 16.2 Build adjustment approval flow (Owner only)
     - `src/app/(app)/adjustments/pending.tsx`: list adjustments in `pending_approval` status
     - Owner approve → call `approve-adjustment` Edge Function → INSERT movement, update status to `approved`
     - Owner reject → call `reject-adjustment` Edge Function → update status to `rejected`, notify submitting user via alert INSERT
     - _Requirements: 5.7, 5.8_
 
-  - [ ] 16.3 Build adjustment mobile UI
+  - [x] 16.3 Build adjustment mobile UI
     - `src/app/(app)/inventory/[skuId].tsx` (extend): "Adjust Stock" button opens modal with reason_code picker, quantity input, notes field
     - Show validation message when `reason_code = 'other'` and notes is empty
     - Show approval-pending confirmation screen for threshold-exceeding adjustments
@@ -360,15 +360,15 @@ A mobile-first inventory and purchasing platform for micro retail businesses, bu
     - Generate arbitrary (delta, threshold) where `ABS(delta) > threshold`; simulate staff submission; assert no movement row created and balance unchanged until owner approves
     - **Validates: Requirements 5.5, 5.6, 5.7**
 
-- [ ] 17. Implement cycle count and full audit workflow 🟢
-  - [ ] 17.1 Create count session Edge Functions
+- [x] 17. Implement cycle count and full audit workflow 🟢
+  - [x] 17.1 Create count session Edge Functions
     - `supabase/functions/start-count-session/index.ts`: creates `stock_count_sessions` row; snapshots `inventory_balances` into `stock_count_lines.snapshot_quantity` for all in-scope SKUs
     - `supabase/functions/submit-count-line/index.ts`: accepts `{ session_id, sku_id, counted_quantity, idempotency_key }`; computes variance; creates `count_correction` movement if variance ≠ 0; updates `stock_count_lines`
     - `supabase/functions/complete-count-session/index.ts`: computes session summary (total SKUs, variance units, variance value); updates session status to `completed`
     - `supabase/functions/cancel-count-session/index.ts`: rolls back all submitted count_correction movements for the session via offsetting adjustments; warns user before cancel
     - _Requirements: 6.1, 6.2, 6.4, 6.5, 6.6, 6.7_
 
-  - [ ] 17.2 Build count session mobile UI
+  - [x] 17.2 Build count session mobile UI
     - `src/app/(app)/count/index.tsx`: choose count type (cycle/full); show in-progress session if one exists
     - `src/app/(app)/count/[sessionId].tsx`: scan SKU barcode → show name only (no system balance shown until submitted per req 6.3); quantity input; submit per line
     - Show variance and confirmation dialog after each submission; show session summary on completion
@@ -385,8 +385,8 @@ A mobile-first inventory and purchasing platform for micro retail businesses, bu
 
 ### Phase 7: Purchase Orders (CRUD, Status Machine)
 
-- [ ] 18. Implement purchase order data layer and state machine 🟢
-  - [ ] 18.1 Create PO CRUD Edge Functions and hooks
+- [x] 18. Implement purchase order data layer and state machine 🟢
+  - [x] 18.1 Create PO CRUD Edge Functions and hooks
     - `supabase/functions/create-po/index.ts`: validates role (`owner` or `purchasing`); creates PO in `draft` with lines
     - `supabase/functions/update-po/index.ts`: validates PO is in `draft`; allows editing lines
     - `supabase/functions/submit-po/index.ts`: transitions `draft → submitted`; records `submitted_at` and `submitted_by`; locks PO
@@ -394,7 +394,7 @@ A mobile-first inventory and purchasing platform for micro retail businesses, bu
     - `src/hooks/usePurchaseOrders.ts`: `usePurchaseOrders()`, `usePurchaseOrder(poId)`, and mutation hooks
     - _Requirements: 8.1, 8.2, 8.3_
 
-  - [ ] 18.2 Build PO list and detail screens
+  - [x] 18.2 Build PO list and detail screens
     - `src/app/(app)/orders/index.tsx`: list POs with status filter; badge counts by status
     - `src/app/(app)/orders/[poId].tsx`: PO header (supplier, dates, status); line items with ordered/received qty; action buttons (submit, cancel, edit)
     - Show MOQ warning when user manually enters quantity below `supplier.minimum_order_qty`
@@ -416,22 +416,22 @@ A mobile-first inventory and purchasing platform for micro retail businesses, bu
 
 ### Phase 8: Square Integration
 
-- [ ] 19. Implement Square webhook ingestion Edge Function 🟢
-  - [ ] 19.1 Create `square-webhook` Edge Function skeleton with HMAC verification
+- [x] 19. Implement Square webhook ingestion Edge Function 🟢
+  - [x] 19.1 Create `square-webhook` Edge Function skeleton with HMAC verification
     - `supabase/functions/square-webhook/index.ts`
     - Verify `x-square-hmacsha256-signature` header against webhook signature key from Supabase env secret
     - Return 401 on invalid signature; return 200 immediately if `square_event_id` already exists (idempotent ACK, status=duplicate)
     - INSERT `square_sync_events` row with `status = 'pending'`
     - _Requirements: 3.1, 3.2, 3.6, 3.10_
 
-  - [ ] 19.2 Implement event handlers: sale and refund/void
+  - [x] 19.2 Implement event handlers: sale and refund/void
     - `payment.completed` / `order.fulfilled`: extract line items; look up SKU by Square catalog item ID; INSERT `sale` movement (negative delta) per SKU
     - `refund.created` / `payment.refunded`: INSERT `return` movement (positive delta) referencing original sale via `reference_id`
     - `order.cancelled` / `payment.voided`: INSERT offsetting movement to reverse any prior sale decrements
     - Unmatched SKU: UPDATE `square_sync_events` status to `unmatched`; INSERT `square_unmatched` alert
     - _Requirements: 3.1, 3.3, 3.4, 3.5_
 
-  - [ ] 19.3 Implement retry logic and dead-letter handling
+  - [x] 19.3 Implement retry logic and dead-letter handling
     - On transient error: increment `retry_count`; exponential backoff schedule (immediate, +30s, +2min); after 3 failures set `status = 'failed'`
     - Create `supabase/functions/square-webhook-retry/index.ts`: scheduled every 5 min; queries `square_sync_events` with `status = 'pending'` and `retry_count > 0`; re-dispatches to event handler
     - _Requirements: 3.7_
@@ -452,19 +452,19 @@ A mobile-first inventory and purchasing platform for micro retail businesses, bu
     - **Validates: Requirements 3.7**
 
 - [ ] 20. Implement Square reconciliation and catalog sync 🟢
-  - [ ] 20.1 Create `square-reconcile` Edge Function (scheduled)
+  - [x] 20.1 Create `square-reconcile` Edge Function (scheduled)
     - `supabase/functions/square-reconcile/index.ts`: runs every 60 min
     - Check last successful `square_sync_events` timestamp; if > 60 min ago, query Square Orders API for orders since last sync
     - Compare against existing `square_sync_events` records; synthesize and process any missing `payment.completed` events
     - _Requirements: 3.9_
 
-  - [ ] 20.2 Create `square-catalog-sync` Edge Function
+  - [x] 20.2 Create `square-catalog-sync` Edge Function
     - `supabase/functions/square-catalog-sync/index.ts`: maps Square catalog items to `products` and `product_barcodes`
     - Store `square_catalog_item_id` in `products` (add column in migration if not already present); map item variations to `product_variants`
     - Populate `product_barcodes` from Square item UPC/barcode data
     - _Requirements: 3.1 (SKU matching), Phase 2 requirement note in Req 3_
 
-  - [ ] 20.3 Build admin Square sync events view
+  - [-] 20.3 Build admin Square sync events view
     - `src/app/(app)/admin/square-events.tsx`: table of `square_sync_events` filtered by `status IN ('failed', 'unmatched')` (Owner only)
     - Show: event type, event ID, error message, retry count, created_at
     - Action buttons: "Retry" (re-queues for processing), "Mark Resolved" (sets status to a resolved terminal state)
@@ -483,7 +483,7 @@ A mobile-first inventory and purchasing platform for micro retail businesses, bu
 ### Phase 9: Low-Stock Alerts and Realtime
 
 - [ ] 21. Implement alert trigger and Realtime subscription 🟢
-  - [ ] 21.1 Extend `update_inventory_balance` trigger to evaluate alert conditions
+  - [-] 21.1 Extend `update_inventory_balance` trigger to evaluate alert conditions
     - After balance update: if `new_balance.quantity <= product.reorder_point`, check for existing active `low_stock` alert; if none, INSERT `alerts` row
     - If `new_balance.quantity <= 0`, INSERT `stockout` alert (in addition to low_stock)
     - If new balance > reorder_point AND an active `low_stock` alert exists: UPDATE alert status to `resolved`, set `resolved_at`
