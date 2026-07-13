@@ -17,8 +17,8 @@
  * Requirements: 13.4, 13.5, 13.6
  */
 
-import NetInfo from '@react-native-community/netinfo';
 import { QueryClient } from '@tanstack/react-query';
+import { Platform } from 'react-native';
 import { create } from 'zustand';
 
 import {
@@ -159,17 +159,35 @@ export const useSyncStore = create<SyncStore>((set, get) => {
   // Defer subscription setup to the next microtask so the store object is
   // fully created before the callback may fire.
   Promise.resolve().then(() => {
-    NetInfo.addEventListener((state) => {
-      const connected = state.isConnected === true && state.isInternetReachable !== false;
-      const wasConnected = get().isConnected;
+    if (Platform.OS === 'web') {
+      // On web, use the browser's online/offline events instead of NetInfo.
+      const handleOnline = () => {
+        const wasConnected = get().isConnected;
+        set({ isConnected: true });
+        if (!wasConnected) {
+          void get().processPendingActions();
+        }
+      };
+      const handleOffline = () => { set({ isConnected: false }); };
+      window.addEventListener('online', handleOnline);
+      window.addEventListener('offline', handleOffline);
+      // Set initial state from navigator
+      set({ isConnected: navigator.onLine });
+    } else {
+      // eslint-disable-next-line @typescript-eslint/no-require-imports
+      const NetInfo = require('@react-native-community/netinfo').default as typeof import('@react-native-community/netinfo').default;
+      NetInfo.addEventListener((state) => {
+        const connected = state.isConnected === true && state.isInternetReachable !== false;
+        const wasConnected = get().isConnected;
 
-      set({ isConnected: connected });
+        set({ isConnected: connected });
 
-      // Trigger sync when transitioning from offline → online (Req 13.4)
-      if (connected && !wasConnected) {
-        void get().processPendingActions();
-      }
-    });
+        // Trigger sync when transitioning from offline → online (Req 13.4)
+        if (connected && !wasConnected) {
+          void get().processPendingActions();
+        }
+      });
+    }
   });
 
   return {

@@ -8,17 +8,43 @@
  * The cache is loaded at app startup and on reconnect via
  * `loadCatalogFromServer()`.  Barcode scans resolve synchronously against the
  * cache and fall back to a network query via `barcodeResolver.ts`.
+ *
+ * On web, MMKV is not available. We use an in-memory Map as a non-persistent
+ * fallback so the web build doesn't crash.
  */
 
-import { MMKV } from 'react-native-mmkv';
+import { Platform } from 'react-native';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import type { CachedProduct } from '@/types';
 
 // ---------------------------------------------------------------------------
-// Dedicated MMKV instance for the product catalog
+// Storage abstraction: MMKV on native, in-memory on web
 // ---------------------------------------------------------------------------
 
-export const catalogStorage = new MMKV({ id: 'product-catalog' });
+interface CatalogStorage {
+  getString: (key: string) => string | undefined;
+  set: (key: string, value: string) => void;
+  delete: (key: string) => void;
+  clearAll: () => void;
+}
+
+function createCatalogStorage(): CatalogStorage {
+  if (Platform.OS !== 'web') {
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const { MMKV } = require('react-native-mmkv') as typeof import('react-native-mmkv');
+    return new MMKV({ id: 'product-catalog' });
+  }
+  // In-memory fallback for web
+  const store = new Map<string, string>();
+  return {
+    getString: (key) => store.get(key),
+    set: (key, value) => { store.set(key, value); },
+    delete: (key) => { store.delete(key); },
+    clearAll: () => { store.clear(); },
+  };
+}
+
+export const catalogStorage = createCatalogStorage();
 
 // ---------------------------------------------------------------------------
 // Key helpers

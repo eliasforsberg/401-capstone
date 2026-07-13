@@ -4,18 +4,42 @@
  * All pending actions are stored as a JSON array under the single MMKV key
  * `'actions'` in an `'offline-queue'` instance.  The queue is FIFO: new
  * actions are appended to the end; `dequeueNextAction` removes from the front.
+ *
+ * On web, MMKV is not available (native module). We fall back to an
+ * in-memory queue so the web build doesn't crash. Persistence is not
+ * required for the web target.
  */
 
-import { MMKV } from 'react-native-mmkv';
+import { Platform } from 'react-native';
 
 import type { OfflineAction } from '@/types';
 
 // ---------------------------------------------------------------------------
-// MMKV instance
+// Storage abstraction: MMKV on native, in-memory on web
 // ---------------------------------------------------------------------------
 
-const mmkv = new MMKV({ id: 'offline-queue' });
+interface QueueStorage {
+  getString: (key: string) => string | null;
+  set: (key: string, value: string) => void;
+  delete: (key: string) => void;
+}
 
+function createStorage(): QueueStorage {
+  if (Platform.OS !== 'web') {
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const { MMKV } = require('react-native-mmkv') as typeof import('react-native-mmkv');
+    return new MMKV({ id: 'offline-queue' });
+  }
+  // In-memory fallback for web
+  const store = new Map<string, string>();
+  return {
+    getString: (key) => store.get(key) ?? null,
+    set: (key, value) => { store.set(key, value); },
+    delete: (key) => { store.delete(key); },
+  };
+}
+
+const storage = createStorage();
 const QUEUE_KEY = 'actions';
 
 // ---------------------------------------------------------------------------
@@ -23,7 +47,7 @@ const QUEUE_KEY = 'actions';
 // ---------------------------------------------------------------------------
 
 function readQueue(): OfflineAction[] {
-  const raw = mmkv.getString(QUEUE_KEY);
+  const raw = storage.getString(QUEUE_KEY);
   if (!raw) return [];
   try {
     const parsed = JSON.parse(raw);
@@ -34,7 +58,7 @@ function readQueue(): OfflineAction[] {
 }
 
 function writeQueue(actions: OfflineAction[]): void {
-  mmkv.set(QUEUE_KEY, JSON.stringify(actions));
+  storage.set(QUEUE_KEY, JSON.stringify(actions));
 }
 
 // ---------------------------------------------------------------------------
@@ -73,7 +97,7 @@ export function getPendingActions(): OfflineAction[] {
  * Remove all actions from the queue.
  */
 export function clearQueue(): void {
-  mmkv.delete(QUEUE_KEY);
+  storage.delete(QUEUE_KEY);
 }
 
 /**
