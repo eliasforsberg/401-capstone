@@ -451,7 +451,7 @@ A mobile-first inventory and purchasing platform for micro retail businesses, bu
     - Simulate a webhook that always fails; assert `retry_count` never exceeds 3 and status becomes `'failed'` after exactly 4 total attempts
     - **Validates: Requirements 3.7**
 
-- [ ] 20. Implement Square reconciliation and catalog sync 🟢
+- [x] 20. Implement Square reconciliation and catalog sync 🟢
   - [x] 20.1 Create `square-reconcile` Edge Function (scheduled)
     - `supabase/functions/square-reconcile/index.ts`: runs every 60 min
     - Check last successful `square_sync_events` timestamp; if > 60 min ago, query Square Orders API for orders since last sync
@@ -464,7 +464,7 @@ A mobile-first inventory and purchasing platform for micro retail businesses, bu
     - Populate `product_barcodes` from Square item UPC/barcode data
     - _Requirements: 3.1 (SKU matching), Phase 2 requirement note in Req 3_
 
-  - [-] 20.3 Build admin Square sync events view
+  - [x] 20.3 Build admin Square sync events view
     - `src/app/(app)/admin/square-events.tsx`: table of `square_sync_events` filtered by `status IN ('failed', 'unmatched')` (Owner only)
     - Show: event type, event ID, error message, retry count, created_at
     - Action buttons: "Retry" (re-queues for processing), "Mark Resolved" (sets status to a resolved terminal state)
@@ -482,22 +482,22 @@ A mobile-first inventory and purchasing platform for micro retail businesses, bu
 
 ### Phase 9: Low-Stock Alerts and Realtime
 
-- [ ] 21. Implement alert trigger and Realtime subscription 🟢
-  - [-] 21.1 Extend `update_inventory_balance` trigger to evaluate alert conditions
+- [x] 21. Implement alert trigger and Realtime subscription 🟢
+  - [x] 21.1 Extend `update_inventory_balance` trigger to evaluate alert conditions
     - After balance update: if `new_balance.quantity <= product.reorder_point`, check for existing active `low_stock` alert; if none, INSERT `alerts` row
     - If `new_balance.quantity <= 0`, INSERT `stockout` alert (in addition to low_stock)
     - If new balance > reorder_point AND an active `low_stock` alert exists: UPDATE alert status to `resolved`, set `resolved_at`
     - Add SQL migration for alert trigger logic (idempotent, part of `_03_inventory_ledger.sql` or a new patch migration)
     - _Requirements: 4.1, 4.2, 4.5, 4.7, 4.8_
 
-  - [ ] 21.2 Create Supabase Realtime alert subscription hook
+  - [x] 21.2 Create Supabase Realtime alert subscription hook
     - `src/hooks/useAlerts.ts`: subscribe to `postgres_changes` on `alerts` table filtered by `business_id`
     - On INSERT of new alert: update in-app notification badge; show toast/banner
     - Alert must appear in-app within 5 seconds of movement causing balance change
     - TanStack Query invalidation on alert INSERT to refresh dashboard KPIs
     - _Requirements: 4.3_
 
-  - [ ] 21.3 Build alerts feed and acknowledgement UI
+  - [x] 21.3 Build alerts feed and acknowledgement UI
     - In-app notification feed component (rendered in `(app)/_layout.tsx`)
     - Alert list: type badge, SKU name, current balance, created_at, status
     - Acknowledge action: PATCH alert to `status = 'acknowledged'`; records user_id and timestamp
@@ -513,8 +513,8 @@ A mobile-first inventory and purchasing platform for micro retail businesses, bu
     - Given an active `low_stock` alert; simulate receive movement that raises balance above reorder_point; assert alert transitions to `resolved`; assert alert record still exists (not deleted)
     - **Validates: Requirements 4.7, 4.8**
 
-- [ ] 22. Architect push notification infrastructure (Phase 2, schema only in MVP) 🔵
-  - [ ] 22.1 Add push token table and notification preference schema
+- [x] 22. Architect push notification infrastructure (Phase 2, schema only in MVP) 🔵
+  - [x] 22.1 Add push token table and notification preference schema
     - Create `supabase/migrations/<timestamp>_10_push_tokens.sql`: `user_push_tokens(user_id, token, platform, created_at)`
     - Add `notification_preferences` column (JSONB) to `user_profiles`: stores per-channel opt-in flags
     - `expo-notifications` dependency installed; `registerForPushNotificationsAsync()` helper written but not called (guarded by feature flag `PUSH_NOTIFICATIONS_ENABLED = false`)
@@ -525,8 +525,8 @@ A mobile-first inventory and purchasing platform for micro retail businesses, bu
 
 ### Phase 10: Dashboard and Reports
 
-- [ ] 23. Implement dashboard KPI data layer 🟢
-  - [ ] 23.1 Create Postgres views / functions for dashboard KPIs
+- [x] 23. Implement dashboard KPI data layer 🟢
+  - [x] 23.1 Create Postgres views / functions for dashboard KPIs
     - Create `dashboard_kpis(business_id, location_id)` Postgres function returning: total_units_on_hand, total_inventory_value, low_stock_count, stockout_count, stockout_risk_count, sell_through_rate_30d, shrink_rate_30d, gross_sales_30d
     - Sell-through rate: units sold in 30d / (units sold + current balance)
     - Shrink/adjustment rate: ABS(SUM(delta)) for theft/spoilage/damage in 30d / received_30d
@@ -534,34 +534,34 @@ A mobile-first inventory and purchasing platform for micro retail businesses, bu
     - Add migration for the function
     - _Requirements: 10.1, 10.7_
 
-  - [ ] 23.2 Build dashboard screen
+  - [x] 23.2 Build dashboard screen
     - `src/app/(app)/dashboard/index.tsx`: 8 KPI cards in 2×4 grid using NativeWind
     - Each card is tappable; navigates to corresponding report view
     - Initial render within 2 seconds on 4G (TanStack Query with stale-while-revalidate; show skeleton loaders)
     - _Requirements: 10.1, 10.2, 15.1_
 
-- [ ] 24. Implement report views 🟢
-  - [ ] 24.1 Build stock on hand and inventory valuation reports
+- [x] 24. Implement report views 🟢
+  - [x] 24.1 Build stock on hand and inventory valuation reports
     - `src/app/(app)/reports/index.tsx`: report type selector
     - Stock On Hand: paginated list with balance, cost_price, total value per SKU; filterable by category/supplier/SKU
     - Inventory Valuation: weighted average cost breakdown; total value footer
     - _Requirements: 10.3, 10.5, 10.7_
 
-  - [ ] 24.2 Build low-stock, sales velocity, and dead stock reports
+  - [x] 24.2 Build low-stock, sales velocity, and dead stock reports
     - Low-Stock & Stockout Risk: list SKUs at/below reorder_point; show days until projected stockout
     - Forecasted Reorder Risk: `projected_balance_at_arrival` per SKU based on 30d velocity × lead time
     - Sales Velocity by SKU: units/day for last 7, 30, 90 days
     - Dead Stock / Slow Movers: SKUs with zero sale movements in last 60 days and balance > 0
     - _Requirements: 10.3, 10.8_
 
-  - [ ] 24.3 Build shrinkage, PO history, and movement ledger reports
+  - [x] 24.3 Build shrinkage, PO history, and movement ledger reports
     - Shrinkage & Adjustment Log: movements of type `adjustment` filterable by reason_code, user, date range, SKU
     - PO History: list all POs with status, supplier, total cost; tap to view detail
     - Inventory Movement History: raw ledger view filterable by movement_type, date range, SKU
     - All report queries must return within 3 seconds for up to 10,000 ledger entries
     - _Requirements: 10.3, 10.4, 10.5_
 
-  - [ ] 24.4 Implement CSV export
+  - [x] 24.4 Implement CSV export
     - Each report view has an "Export CSV" button (Owner and Accountant only)
     - Serialize current filtered result set to CSV; write to device via `expo-file-system`; share sheet via `expo-sharing`
     - _Requirements: 10.6_
@@ -576,8 +576,8 @@ A mobile-first inventory and purchasing platform for micro retail businesses, bu
 
 ### Phase 11: AI Recommendation Engine
 
-- [ ] 25. Implement `ai-recommendations` Edge Function 🟢
-  - [ ] 25.1 Build reorder recommendation heuristic
+- [x] 25. Implement `ai-recommendations` Edge Function 🟢
+  - [x] 25.1 Build reorder recommendation heuristic
     - `supabase/functions/ai-recommendations/index.ts`
     - Query `inventory_balances`, `products`, `inventory_movements` (30d velocity), `purchase_orders` (open PO qty)
     - Per SKU: compute `projected_balance_at_arrival`; if ≤ `reorder_point`, compute `suggested_qty` (capped at MOQ, rounded to case pack)
@@ -586,7 +586,7 @@ A mobile-first inventory and purchasing platform for micro retail businesses, bu
     - Suppress recommendations for SKUs rejected with `not_needed` or `already_ordered` in last 7 days
     - _Requirements: 11.1, 11.2, 11.4, 11.6, 8.5, 8.6_
 
-  - [ ] 25.2 Build dead stock, count priority, and anomaly detection
+  - [x] 25.2 Build dead stock, count priority, and anomaly detection
     - Dead stock: flag SKUs with zero sales in last 60 days AND balance > 0
     - Count priority: if `shrinkage_30d / received_30d > 0.10`, flag for count
     - Anomaly (Z-score): compute 90d daily velocity distribution; flag SKUs where 7d average deviates > 3 std devs
@@ -609,8 +609,8 @@ A mobile-first inventory and purchasing platform for micro retail businesses, bu
     - Generate 90d daily velocity series with known mean/stddev; inject a 7d window where average > mean + 3×stddev; assert `anomaly` recommendation created
     - **Validates: Requirements 11.8**
 
-- [ ] 26. Build recommendations feed mobile UI 🟢
-  - [ ] 26.1 Build recommendations list and detail screens
+- [x] 26. Build recommendations feed mobile UI 🟢
+  - [x] 26.1 Build recommendations list and detail screens
     - `src/app/(app)/recommendations/index.tsx`: pending recommendations feed grouped by type; badge in dashboard
     - Each card shows: type, SKU name, rationale_text, confidence_level label, suggested_quantity
     - Display `heuristic` / `forecast` badge prominently; never label as "AI prediction"
@@ -618,7 +618,7 @@ A mobile-first inventory and purchasing platform for micro retail businesses, bu
     - Auto-expire `pending` recommendations older than 30 days (handled server-side by scheduled function)
     - _Requirements: 11.3, 11.10, 11.11_
 
-  - [ ] 26.2 Implement recommendation accept/reject workflow
+  - [x] 26.2 Implement recommendation accept/reject workflow
     - Accept: UPDATE recommendation `status = accepted`; INSERT `recommendation_feedback` (action=accepted); trigger draft PO creation (if type=reorder, reuse existing draft PO from Phase 7 creation logic)
     - Reject: show reason code picker (`already_ordered`, `not_needed`, `wrong_quantity`, `other`); INSERT `recommendation_feedback` (action=rejected); UPDATE status=rejected
     - _Requirements: 11.4, 11.5, 8.8, 8.9_
@@ -634,7 +634,7 @@ A mobile-first inventory and purchasing platform for micro retail businesses, bu
 ### Phase 12: Offline Queue and Sync
 
 - [ ] 27. Implement offline queue core infrastructure 🟢
-  - [ ] 27.1 Implement MMKV-backed offline queue store
+  - [-] 27.1 Implement MMKV-backed offline queue store
     - `src/lib/offlineQueue.ts`: serialize/deserialize `OfflineAction` to MMKV using a namespaced key
     - `src/stores/offlineQueueStore.ts` (Zustand): `enqueue(action)`, `dequeue()`, `getAll()`, `remove(id)`, `updateStatus(id, status)`
     - Each action has client-generated UUID idempotency key: `${deviceId}:${actionType}:${timestamp}:${randomUUID()}`
