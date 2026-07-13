@@ -1,0 +1,24 @@
+{
+  "name": "401-capstone",
+  "version": "0.0.1",
+  "private": true,
+  "workspaces": [
+    "mobile"
+  ],
+  "scripts": {
+    "start": "npm --workspace=mobile run start",
+    "ios": "npm --workspace=mobile run ios",
+    "android": "npm --workspace=mobile run android",
+    "test": "npm --workspace=mobile run test",
+    "typecheck": "npm --workspace=mobile run typecheck",
+    "lint": "npm --workspace=mobile run lint",
+    "supabase:start": "supabase start",
+    "supabase:stop": "supabase stop",
+    "supabase:status": "supabase status",
+    "supabase:reset": "supabase db reset",
+    "supabase:push": "supabase db push"
+  },
+  "engines": {
+    "node": ">=20.0.0"
+  }
+}
