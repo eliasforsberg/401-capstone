@@ -228,21 +228,21 @@ A mobile-first inventory and purchasing platform for micro retail businesses, bu
     - Generate arbitrary sets of (barcode → productId) mappings; assert each barcode resolves to exactly one product; assert duplicate barcode assignment is rejected
     - **Validates: Requirements 7.2, 7.5**
 
-- [ ] 11. Build product catalog UI screens 🟢
-  - [-] 11.1 Build product list and detail screens
+- [x] 11. Build product catalog UI screens 🟢
+  - [x] 11.1 Build product list and detail screens
     - `src/app/(app)/inventory/index.tsx`: paginated stock-on-hand list with search by name/SKU/barcode
     - `src/app/(app)/inventory/[skuId].tsx`: product detail showing balance, reorder settings, barcode list, recent movements
     - Allow Owner/Purchasing to edit reorder_point, reorder_quantity, safety_stock, lead_time_days, default_supplier_id
     - _Requirements: 4.4, 7.8_
 
-  - [-] 11.2 Implement expo-camera barcode scanner component
+  - [x] 11.2 Implement expo-camera barcode scanner component
     - `src/app/(app)/inventory/scan.tsx`: full-screen camera view with `expo-camera` barcode scanning
     - Support formats: UPC-A, UPC-E, EAN-13, EAN-8, Code 128, Code 39, QR Code, Data Matrix
     - On successful scan: resolve product within 1 second; navigate to product detail or prompt to create new product
     - Manual lookup fallback: text input for name/SKU/partial barcode search
     - _Requirements: 7.1, 7.2, 7.3, 7.4, 15.2_
 
-  - [-] 11.3 Implement product creation and barcode assignment flow
+  - [x] 11.3 Implement product creation and barcode assignment flow
     - Form: SKU, name, category, unit_of_measure, reorder settings, default_supplier_id
     - Barcode assignment: scan or manually enter; enforce uniqueness within business (show conflict message if duplicate)
     - Supabase Storage upload for product image
@@ -258,14 +258,14 @@ A mobile-first inventory and purchasing platform for micro retail businesses, bu
 
 ### Phase 4: Inventory Ledger Core
 
-- [ ] 12. Implement ledger write service and balance hooks 🟢
+- [x] 12. Implement ledger write service and balance hooks 🟢
   - [x] 12.1 Create `inventoryService.ts` ledger write helpers
     - `src/lib/inventoryService.ts`: functions `insertMovement(movement)`, `getBalance(skuId, locationId)`, `getMovementHistory(skuId, opts)`
     - `insertMovement` must never directly update `inventory_balances`; the DB trigger handles balance update
     - Include `before_quantity` / `after_quantity` snapshots for adjustment-type movements
     - _Requirements: 1.1, 1.2, 1.3, 5.3, 5.4_
 
-  - [-] 12.2 Create TanStack Query hooks for inventory
+  - [x] 12.2 Create TanStack Query hooks for inventory
     - `src/hooks/useInventory.ts`: `useBalance(skuId)`, `useMovementHistory(skuId)`, `useStockOnHand()` (full list with balances)
     - Optimistic balance update on movement insert; roll back on error
     - _Requirements: 1.2, 1.4_
@@ -280,7 +280,7 @@ A mobile-first inventory and purchasing platform for micro retail businesses, bu
     - Sign in as `accountant` role; attempt INSERT on `inventory_movements`; assert RLS rejection
     - _Requirements: 9.2, 9.4, 12.3_
 
-- [ ] 13. Checkpoint — core ledger functional 🟢
+- [x] 13. Checkpoint — core ledger functional 🟢
   - Ensure migration applies cleanly via `supabase db push` against local stack
   - Ensure append-only trigger test passes
   - Ensure balance consistency property test passes
@@ -291,8 +291,8 @@ A mobile-first inventory and purchasing platform for micro retail businesses, bu
 
 ### Phase 5: Stock Receiving Workflow
 
-- [ ] 14. Implement stock receiving backend logic 🟢
-  - [ ] 14.1 Create receiving Edge Function
+- [x] 14. Implement stock receiving backend logic 🟢
+  - [x] 14.1 Create receiving Edge Function
     - `supabase/functions/receive-stock/index.ts`: accepts `{ po_id?, lines: [{sku_id, received_qty, damaged_qty, unit_cost}], idempotency_key }`
     - Validate caller JWT; check `offline_queue_log` for duplicate idempotency key
     - For each line: INSERT `receive` movement; if `damaged_qty > 0`, INSERT `adjustment` movement with `reason_code = 'damage'`
@@ -306,13 +306,13 @@ A mobile-first inventory and purchasing platform for micro retail businesses, bu
     - **Validates: Requirements 2.3, 2.5**
 
 - [ ] 15. Build receiving mobile UI 🟢
-  - [ ] 15.1 Build PO selection and ad hoc receive screens
+  - [-] 15.1 Build PO selection and ad hoc receive screens
     - `src/app/(app)/receive/index.tsx`: list open/partially-received POs; "Ad Hoc Receive" button
     - `src/app/(app)/receive/[poId].tsx`: show PO lines with ordered/received quantities; barcode scan per line
     - Pre-populate product name and expected quantity from PO_Line after barcode scan
     - _Requirements: 2.1, 2.2_
 
-  - [ ] 15.2 Implement offline queue for receive actions
+  - [-] 15.2 Implement offline queue for receive actions
     - On submit while offline: serialize action to `OfflineAction` struct, persist to MMKV via `offlineQueueStore`
     - Display "Pending sync" badge on the receive confirmation screen
     - Sync on reconnect via `syncStore.processPendingActions()` (FIFO order)
@@ -330,7 +330,7 @@ A mobile-first inventory and purchasing platform for micro retail businesses, bu
 ### Phase 6: Stock Adjustments and Audits / Cycle Counts
 
 - [ ] 16. Implement stock adjustment workflow 🟢
-  - [ ] 16.1 Create adjustment Edge Function
+  - [-] 16.1 Create adjustment Edge Function
     - `supabase/functions/adjust-stock/index.ts`: accepts `{ sku_id, location_id, quantity_delta, reason_code, notes?, idempotency_key }`
     - Validate `reason_code` is in the allowed set; require non-empty `notes` when `reason_code = 'other'`
     - Read current balance snapshot for `before_quantity`; compute `after_quantity`
@@ -338,7 +338,7 @@ A mobile-first inventory and purchasing platform for micro retail businesses, bu
     - Otherwise: INSERT adjustment movement immediately; record in `offline_queue_log`
     - _Requirements: 5.1, 5.2, 5.3, 5.4, 5.5, 5.6_
 
-  - [ ] 16.2 Build adjustment approval flow (Owner only)
+  - [-] 16.2 Build adjustment approval flow (Owner only)
     - `src/app/(app)/adjustments/pending.tsx`: list adjustments in `pending_approval` status
     - Owner approve → call `approve-adjustment` Edge Function → INSERT movement, update status to `approved`
     - Owner reject → call `reject-adjustment` Edge Function → update status to `rejected`, notify submitting user via alert INSERT
