@@ -53,7 +53,7 @@ CREATE INDEX idx_locations_business_id ON locations (business_id);
 -- ---------------------------------------------------------------------------
 CREATE TABLE user_profiles (
   user_id      UUID        PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
-  business_id  UUID        NOT NULL REFERENCES businesses(business_id) ON DELETE CASCADE,
+  business_id  UUID        REFERENCES businesses(business_id) ON DELETE CASCADE,
   display_name TEXT,
   avatar_url   TEXT,
   created_at   TIMESTAMPTZ NOT NULL DEFAULT now()

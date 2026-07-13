@@ -149,8 +149,8 @@ A mobile-first inventory and purchasing platform for micro retail businesses, bu
     - `recommendations`: SELECT for `owner` and `purchasing`; INSERT/UPDATE for system (service role only)
     - _Requirements: 9.2, 9.4_
 
-- [ ] 7. Create seed data for development and QA 🟢
-  - [ ] 7.1 Write convenience-store seed fixture
+- [x] 7. Create seed data for development and QA 🟢
+  - [x] 7.1 Write convenience-store seed fixture
     - Create `supabase/seed.sql`: 1 business, 1 location, 2 suppliers (e.g., "Metro Wholesale", "Snack Distributors")
     - 20+ SKUs across categories (beverages, snacks, tobacco, household); each with barcode, reorder_point, safety_stock, lead_time
     - 30 days of `inventory_movements` (receive, sale, adjustment entries) seeded programmatically via SQL loop or explicit inserts
@@ -167,21 +167,21 @@ A mobile-first inventory and purchasing platform for micro retail businesses, bu
 
 ### Phase 2: Auth and User Management
 
-- [ ] 8. Implement Supabase Auth integration and JWT hook 🟢
-  - [ ] 8.1 Create `auth-hooks` Edge Function
+- [x] 8. Implement Supabase Auth integration and JWT hook 🟢
+  - [x] 8.1 Create `auth-hooks` Edge Function
     - Scaffold `supabase/functions/auth-hooks/index.ts`
     - Register as `custom_access_token` hook in Supabase Auth settings
     - On sign-in: query `user_roles` for the user's `business_id` and `role`; inject both into JWT claims
     - Return 401 if user has no `user_roles` entry (unregistered user)
     - _Requirements: 9.1, 12.2_
 
-  - [ ] 8.2 Implement Supabase client singleton and auth store
+  - [x] 8.2 Implement Supabase client singleton and auth store
     - Create `src/lib/supabase.ts`: initialize `@supabase/supabase-js` with anon key and URL from env
     - Create `src/stores/authStore.ts` (Zustand): holds `session`, `user`, `businessId`, `role`
     - On session restore: read JWT claims to populate `businessId` and `role`
     - _Requirements: 12.1, 12.6_
 
-  - [ ] 8.3 Build login and register screens
+  - [x] 8.3 Build login and register screens
     - `src/app/(auth)/login.tsx`: email/password form + magic link option using `react-hook-form` + `zod`
     - `src/app/(auth)/register.tsx`: creates `user_profiles` and `user_roles` rows after Supabase Auth sign-up
     - On success: navigate to `(app)/dashboard`
@@ -193,14 +193,14 @@ A mobile-first inventory and purchasing platform for micro retail businesses, bu
     - Test that a user with no `user_roles` entry receives 401
     - _Requirements: 12.2_
 
-- [ ] 9. Implement user invitation and role management (Owner only) 🟢
-  - [ ] 9.1 Build invite user flow
+- [x] 9. Implement user invitation and role management (Owner only) 🟢
+  - [x] 9.1 Build invite user flow
     - Create `src/app/(app)/settings/invite.tsx`: email input + role selector (`staff`, `purchasing`, `accountant`)
     - Call Supabase Auth admin `inviteUserByEmail` via an Edge Function (never directly from client with service role)
     - Create `supabase/functions/invite-user/index.ts`: validates caller is `owner`, inserts pending `user_roles` row
     - _Requirements: 9.5_
 
-  - [ ] 9.2 Build remove user flow
+  - [x] 9.2 Build remove user flow
     - `src/app/(app)/settings/team.tsx`: list team members with role; Owner can tap to remove
     - Edge Function `remove-user`: validates caller is `owner`, deletes `user_roles` row, calls Supabase Auth `admin.signOut` for all sessions
     - _Requirements: 9.6_
@@ -210,14 +210,14 @@ A mobile-first inventory and purchasing platform for micro retail businesses, bu
 
 ### Phase 3: Product Catalog and Barcode Management
 
-- [ ] 10. Implement product catalog data layer and hooks 🟢
-  - [ ] 10.1 Create TanStack Query hooks for products and suppliers
+- [x] 10. Implement product catalog data layer and hooks 🟢
+  - [x] 10.1 Create TanStack Query hooks for products and suppliers
     - `src/hooks/useProducts.ts`: `useProducts()` (paginated list), `useProduct(productId)`, `useCreateProduct()`, `useUpdateProduct()`
     - `src/hooks/useSuppliers.ts`: `useSuppliers()`, `useCreateSupplier()`
     - All hooks use Supabase JS SDK; mutations invalidate relevant query keys
     - _Requirements: 7.1, 8.2_
 
-  - [ ] 10.2 Implement barcode resolution logic
+  - [x] 10.2 Implement barcode resolution logic
     - `src/lib/barcodeResolver.ts`: given a barcode string, query `product_barcodes` joined to `products`; return the matched product or `null`
     - Implement local MMKV catalog cache: `CachedProduct` interface with `barcodes[]`, `balance`, `balanceSyncedAt`
     - Cache is loaded at app startup and on reconnect; barcode scan resolves against cache first, then falls back to network
@@ -229,20 +229,20 @@ A mobile-first inventory and purchasing platform for micro retail businesses, bu
     - **Validates: Requirements 7.2, 7.5**
 
 - [ ] 11. Build product catalog UI screens 🟢
-  - [ ] 11.1 Build product list and detail screens
+  - [-] 11.1 Build product list and detail screens
     - `src/app/(app)/inventory/index.tsx`: paginated stock-on-hand list with search by name/SKU/barcode
     - `src/app/(app)/inventory/[skuId].tsx`: product detail showing balance, reorder settings, barcode list, recent movements
     - Allow Owner/Purchasing to edit reorder_point, reorder_quantity, safety_stock, lead_time_days, default_supplier_id
     - _Requirements: 4.4, 7.8_
 
-  - [ ] 11.2 Implement expo-camera barcode scanner component
+  - [-] 11.2 Implement expo-camera barcode scanner component
     - `src/app/(app)/inventory/scan.tsx`: full-screen camera view with `expo-camera` barcode scanning
     - Support formats: UPC-A, UPC-E, EAN-13, EAN-8, Code 128, Code 39, QR Code, Data Matrix
     - On successful scan: resolve product within 1 second; navigate to product detail or prompt to create new product
     - Manual lookup fallback: text input for name/SKU/partial barcode search
     - _Requirements: 7.1, 7.2, 7.3, 7.4, 15.2_
 
-  - [ ] 11.3 Implement product creation and barcode assignment flow
+  - [-] 11.3 Implement product creation and barcode assignment flow
     - Form: SKU, name, category, unit_of_measure, reorder settings, default_supplier_id
     - Barcode assignment: scan or manually enter; enforce uniqueness within business (show conflict message if duplicate)
     - Supabase Storage upload for product image
@@ -259,13 +259,13 @@ A mobile-first inventory and purchasing platform for micro retail businesses, bu
 ### Phase 4: Inventory Ledger Core
 
 - [ ] 12. Implement ledger write service and balance hooks 🟢
-  - [ ] 12.1 Create `inventoryService.ts` ledger write helpers
+  - [x] 12.1 Create `inventoryService.ts` ledger write helpers
     - `src/lib/inventoryService.ts`: functions `insertMovement(movement)`, `getBalance(skuId, locationId)`, `getMovementHistory(skuId, opts)`
     - `insertMovement` must never directly update `inventory_balances`; the DB trigger handles balance update
     - Include `before_quantity` / `after_quantity` snapshots for adjustment-type movements
     - _Requirements: 1.1, 1.2, 1.3, 5.3, 5.4_
 
-  - [ ] 12.2 Create TanStack Query hooks for inventory
+  - [-] 12.2 Create TanStack Query hooks for inventory
     - `src/hooks/useInventory.ts`: `useBalance(skuId)`, `useMovementHistory(skuId)`, `useStockOnHand()` (full list with balances)
     - Optimistic balance update on movement insert; roll back on error
     - _Requirements: 1.2, 1.4_
