@@ -134,7 +134,7 @@ A mobile-first inventory and purchasing platform for micro retail businesses, bu
     - INSERT on `stock_count_sessions`/`stock_count_lines`: requires `owner`, `staff`, or `purchasing`
     - _Requirements: 9.2, 9.4_
 
-- [ ] 6. Write migration: alerts, Square events, AI, and offline queue 🟢
+- [x] 6. Write migration: alerts, Square events, AI, and offline queue 🟢
   - [x] 6.1 Create remaining table migrations
     - Create `supabase/migrations/<timestamp>_06_alerts.sql`: `alerts` table
     - Create `supabase/migrations/<timestamp>_07_square_events.sql`: `square_sync_events` with `UNIQUE (square_event_id)`; index `idx_square_event_id`
@@ -633,14 +633,14 @@ A mobile-first inventory and purchasing platform for micro retail businesses, bu
 
 ### Phase 12: Offline Queue and Sync
 
-- [ ] 27. Implement offline queue core infrastructure 🟢
-  - [-] 27.1 Implement MMKV-backed offline queue store
+- [x] 27. Implement offline queue core infrastructure 🟢
+  - [x] 27.1 Implement MMKV-backed offline queue store
     - `src/lib/offlineQueue.ts`: serialize/deserialize `OfflineAction` to MMKV using a namespaced key
     - `src/stores/offlineQueueStore.ts` (Zustand): `enqueue(action)`, `dequeue()`, `getAll()`, `remove(id)`, `updateStatus(id, status)`
     - Each action has client-generated UUID idempotency key: `${deviceId}:${actionType}:${timestamp}:${randomUUID()}`
     - _Requirements: 13.2, 13.7_
 
-  - [ ] 27.2 Implement sync-on-reconnect logic
+  - [x] 27.2 Implement sync-on-reconnect logic
     - `src/stores/syncStore.ts` (Zustand): `processPendingActions()` — iterates MMKV queue in FIFO order; POSTs each to corresponding Edge Function with idempotency key
     - NetInfo listener in `src/app/(app)/_layout.tsx`: on `isConnected = true` → show sync banner → call `processPendingActions()`
     - On success: remove from queue, refresh TanStack Query caches
@@ -648,7 +648,7 @@ A mobile-first inventory and purchasing platform for micro retail businesses, bu
     - On server error: increment `retryCount`; keep in queue
     - _Requirements: 13.4, 13.5, 13.6_
 
-  - [ ] 27.3 Wire offline queue to receive, adjustment, and count workflows
+  - [x] 27.3 Wire offline queue to receive, adjustment, and count workflows
     - In `src/app/(app)/receive/[poId].tsx`: call `offlineQueueStore.enqueue()` when network unavailable; show "Pending sync" badge
     - In `src/app/(app)/inventory/[skuId].tsx` (adjustment): same offline enqueue pattern
     - In `src/app/(app)/count/[sessionId].tsx`: enqueue count-line submissions when offline
@@ -665,8 +665,8 @@ A mobile-first inventory and purchasing platform for micro retail businesses, bu
 
 ### Phase 13: Testing, RLS Validation, Monitoring, and Admin Tools
 
-- [ ] 28. Complete property-based test suite 🟢
-  - [ ] 28.1 Write remaining property tests not yet covered in earlier phases
+- [x] 28. Complete property-based test suite 🟢
+  - [x] 28.1 Write remaining property tests not yet covered in earlier phases
     - **Property 19: Tenant Isolation via RLS** — generate JWTs for Business A and B; assert no cross-tenant row leakage for every business-data table; **Validates: Requirements 12.3, 9.4**
     - Integrate all property tests into Jest CI run; tag each with `// Feature: ai-inventory-manager, Property N:`
     - Set `numRuns: 100` for all `fc.assert` calls; add seed logging for CI reproduction
@@ -679,19 +679,19 @@ A mobile-first inventory and purchasing platform for micro retail businesses, bu
     - Run against local Supabase stack (`supabase start`)
     - _Requirements: 9.4, 12.3, 14.2_
 
-- [ ] 29. Implement audit logging and health-check endpoint 🟢
-  - [ ] 29.1 Create audit log infrastructure
+- [x] 29. Implement audit logging and health-check endpoint 🟢
+  - [x] 29.1 Create audit log infrastructure
     - Add `audit_log` table migration: `(log_id, business_id, user_id, event_type, table_name, record_id, details JSONB, created_at)`
     - Log: all auth events (sign-in, sign-out, invite, remove), all permission-denied events, all inventory-affecting operations (via Edge Function middleware)
     - Use `useErrorHandler` hook on client to route 403 errors to audit log via Edge Function call
     - _Requirements: 15.4_
 
-  - [ ] 29.2 Implement ledger consistency health-check endpoint
+  - [x] 29.2 Implement ledger consistency health-check endpoint
     - `supabase/functions/health-check/index.ts` (requires `owner` JWT): queries every `(sku_id, location_id)` pair; compares `inventory_balances.quantity` to `get_inventory_balance(sku_id, location_id)` output; returns list of any inconsistencies
     - Wire to a "Run Consistency Check" button in Owner settings screen
     - _Requirements: 15.3_
 
-- [ ] 30. Final integration and end-to-end testing pass 🟢
+- [x] 30. Final integration and end-to-end testing pass 🟢
   - [ ]* 30.1 Write integration tests for trigger behavior
     - Test `update_inventory_balance` fires on movement INSERT and balance is correct
     - Test `low_stock` alert created when balance falls to reorder_point
@@ -704,7 +704,7 @@ A mobile-first inventory and purchasing platform for micro retail businesses, bu
     - Adjust-stock approval threshold: POST staff adjustment above threshold → assert pending_approval, no movement
     - _Requirements: 2.3, 3.2, 5.5_
 
-- [ ] 31. Checkpoint — all tests passing 🟢
+- [x] 31. Checkpoint — all tests passing 🟢
   - Run full Jest suite (unit + property tests): `npm test -- --runInBand`
   - Run RLS validation tests against local Supabase
   - Run `supabase db push` migration against local stack with zero errors
@@ -715,21 +715,21 @@ A mobile-first inventory and purchasing platform for micro retail businesses, bu
 
 ### Phase 14: Demo Data, Staging, and Pre-Launch
 
-- [ ] 32. Configure staging environment and CI/CD pipeline 🟢
-  - [ ] 32.1 Set up staging Supabase project
+- [x] 32. Configure staging environment and CI/CD pipeline 🟢
+  - [x] 32.1 Set up staging Supabase project
     - Create dedicated Supabase project for staging; configure Square sandbox credentials in Supabase Vault
     - Apply all migrations via `supabase db push --project-ref <staging-ref>` in CI
     - Document environment variable matrix (local / staging / production) in `README.md`
     - _Requirements: Design Deployment Environments_
 
-  - [ ] 32.2 Complete GitHub Actions CI/CD pipeline
+  - [x] 32.2 Complete GitHub Actions CI/CD pipeline
     - Add `deploy-staging.yml` workflow: trigger on push to `main` → run tests → `supabase db push` → deploy Edge Functions via `supabase functions deploy`
     - Add `deploy-production.yml` workflow: trigger on tagged release → same steps against production project
     - Add step to run RLS validation test suite in CI against local Supabase Docker container
     - _Requirements: Design Deployment Environments_
 
-- [ ] 33. Load demo data and validate staging environment 🟢
-  - [ ] 33.1 Apply seed data to staging
+- [x] 33. Load demo data and validate staging environment 🟢
+  - [x] 33.1 Apply seed data to staging
     - Run `supabase db reset --project-ref <staging-ref>` then `psql ... < supabase/seed.sql` in CI staging deploy step
     - Verify: 20+ products, 2 suppliers, 30 days of movements, correct balances, 1 submitted PO, active low-stock alerts
     - _Requirements: 14.5_

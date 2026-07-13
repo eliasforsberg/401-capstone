@@ -24,6 +24,7 @@
  */
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { extractIp, logAuditEvent } from "../_shared/audit.ts";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -163,6 +164,16 @@ Deno.serve(async (req: Request): Promise<Response> => {
     console.error("invite-user: inviteUserByEmail error:", inviteError.message);
     return jsonResponse({ error: inviteError.message }, 500);
   }
+
+  // ── Audit: log invite event (fire-and-forget) ────────────────────────────
+  void logAuditEvent({
+    adminClient,
+    user_id: caller.id,
+    business_id: businessId,
+    event_type: "auth.invite",
+    details: { invited_email: email, role },
+    ip_address: extractIp(req),
+  });
 
   return jsonResponse({ success: true }, 200);
 });

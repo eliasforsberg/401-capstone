@@ -1,0 +1,82 @@
+name: Deploy — Staging
+
+# Triggers on every push to main after CI passes.
+# Applies database migrations and deploys Edge Functions to the
+# dedicated staging Supabase project (Square sandbox credentials).
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  deploy-staging:
+    name: Deploy to Staging
+    runs-on: ubuntu-latest
+    environment: staging
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+
+      - name: Cache npm dependencies
+        uses: actions/cache@v4
+        with:
+          path: ~/.npm
+          key: ${{ runner.os }}-node-${{ hashFiles('**/package-lock.json') }}
+          restore-keys: |
+            ${{ runner.os }}-node-
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Type-check
+        run: npm run typecheck
+
+      - name: Unit tests
+        run: npm run test
+
+      - name: Set up Supabase CLI
+        uses: supabase/setup-cli@v1
+        with:
+          version: latest
+
+      # Apply all versioned migrations to the staging project.
+      # SUPABASE_ACCESS_TOKEN must be a personal access token
+      # (Settings → Access Tokens in app.supabase.com).
+      - name: Apply migrations to staging
+        run: |
+          supabase db push --project-ref ${{ secrets.STAGING_SUPABASE_PROJECT_REF }}
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+
+      # Seed the staging database with the convenience-store fixture.
+      # Runs after migrations so all tables exist before inserts.
+      # Uses ON CONFLICT DO NOTHING throughout, making this idempotent —
+      # safe to re-run on every deploy without duplicating data.
+      #
+      # Expected post-seed state (Requirements: 14.5):
+      #   ✓ 22 products  (beverages×6, snacks×6, tobacco×4, household×6)
+      #   ✓ 2 suppliers  (Metro Wholesale, Snack Distributors)
+      #   ✓ 55 inventory_movements spanning 2024-08-01 → 2024-08-30 (30 days)
+      #   ✓ Correct inventory balances derived by the DB trigger on each insert
+      #   ✓ 1 submitted purchase order with 3 PO lines
+      #   ✓ 3 alerts: 2 resolved, 1 active low_stock (Dasani Water)
+      - name: Seed staging database
+        run: |
+          psql "${{ secrets.STAGING_DB_URL }}" < supabase/seed.sql
+        env:
+          PGPASSWORD: ${{ secrets.STAGING_DB_PASSWORD }}
+
+      # Deploy every Edge Function found in supabase/functions/.
+      # Square sandbox credentials are stored as Supabase Vault
+      # secrets on the staging project — not in GitHub Secrets.
+      - name: Deploy Edge Functions to staging
+        run: |
+          supabase functions deploy --project-ref ${{ secrets.STAGING_SUPABASE_PROJECT_REF }}
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}

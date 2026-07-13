@@ -47,3 +47,60 @@ jobs:
           name: supabase-migrations
           path: supabase/migrations/
           if-no-files-found: warn
+
+  rls-integration:
+    name: RLS Validation (local Supabase)
+    runs-on: ubuntu-latest
+    # Run in parallel with the build job; both must pass for the PR to merge.
+    needs: []
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+
+      - name: Cache npm dependencies
+        uses: actions/cache@v4
+        with:
+          path: ~/.npm
+          key: ${{ runner.os }}-node-${{ hashFiles('**/package-lock.json') }}
+          restore-keys: |
+            ${{ runner.os }}-node-
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Set up Supabase CLI
+        uses: supabase/setup-cli@v1
+        with:
+          version: latest
+
+      # Start local Supabase stack (Postgres + Auth + Storage) via Docker.
+      # `supabase start` blocks until all services are healthy.
+      - name: Start local Supabase stack
+        run: supabase start
+
+      # Capture the local stack URLs and keys so tests can connect without
+      # hard-coded values. `supabase status --output env` emits KEY=VALUE lines.
+      - name: Export local Supabase env vars
+        run: |
+          supabase status --output env >> $GITHUB_ENV
+
+      # Run only the integration / RLS tests (files matching *.integration.test.ts
+      # or *.rls.test.ts). The pattern is intentionally narrow so that pure unit
+      # tests do not pull in a Supabase dependency.
+      - name: Run RLS validation tests
+        run: npm run test:rls
+        env:
+          # Values are populated by the "Export local Supabase env vars" step above.
+          SUPABASE_URL: ${{ env.API_URL }}
+          SUPABASE_ANON_KEY: ${{ env.ANON_KEY }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ env.SERVICE_ROLE_KEY }}
+
+      - name: Stop local Supabase stack
+        if: always()
+        run: supabase stop

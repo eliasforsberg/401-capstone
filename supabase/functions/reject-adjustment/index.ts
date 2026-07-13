@@ -31,6 +31,7 @@
  */
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { extractIp, logAuditEvent } from "../_shared/audit.ts";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -191,6 +192,24 @@ Deno.serve(async (req: Request): Promise<Response> => {
     // Alert failure is non-fatal — rejection was already persisted.
     console.warn("reject-adjustment: alert insert failed:", alertError.message);
   }
+
+  // ── Audit: log adjustment.rejected event (fire-and-forget) ───────────────
+  void logAuditEvent({
+    adminClient,
+    user_id: callerId,
+    business_id: callerBusinessId,
+    event_type: "adjustment.rejected",
+    table_name: "inventory_adjustments_pending",
+    record_id: adjustment_id,
+    details: {
+      sku_id: adjustment.sku_id,
+      quantity_delta: adjustment.quantity_delta,
+      reason_code: adjustment.reason_code,
+      submitted_by: adjustment.submitted_by,
+      rejection_note: rejection_note ?? null,
+    },
+    ip_address: extractIp(req),
+  });
 
   return json({ success: true }, 200);
 });

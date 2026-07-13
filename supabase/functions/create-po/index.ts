@@ -34,6 +34,7 @@
  */
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { extractIp, logAuditEvent } from "../_shared/audit.ts";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -256,6 +257,22 @@ Deno.serve(async (req: Request): Promise<Response> => {
   // ------------------------------------------------------------------
   // 7. Return created PO with lines
   // ------------------------------------------------------------------
+  // ── Audit: log po.created event (fire-and-forget) ─────────────────────
+  void logAuditEvent({
+    adminClient,
+    user_id: user.id,
+    business_id,
+    event_type: "po.created",
+    table_name: "purchase_orders",
+    record_id: po.po_id,
+    details: {
+      supplier_id,
+      location_id,
+      line_count: lines.length,
+    },
+    ip_address: extractIp(req),
+  });
+
   return jsonResponse(
     {
       status: "ok",

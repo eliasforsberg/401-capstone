@@ -28,6 +28,7 @@
  */
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { extractIp, logAuditEvent } from "../_shared/audit.ts";
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -183,6 +184,18 @@ Deno.serve(async (req: Request): Promise<Response> => {
     .from("purchase_order_lines")
     .select("*")
     .eq("po_id", po_id);
+
+  // ── Audit: log po.cancelled event (fire-and-forget) ───────────────────
+  void logAuditEvent({
+    adminClient,
+    user_id: user.id,
+    business_id,
+    event_type: "po.cancelled",
+    table_name: "purchase_orders",
+    record_id: po_id,
+    details: { previous_status: existingPO.status },
+    ip_address: extractIp(req),
+  });
 
   return jsonResponse({
     status: "ok",

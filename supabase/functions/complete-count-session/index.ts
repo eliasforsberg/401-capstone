@@ -39,6 +39,7 @@
  */
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { extractIp, logAuditEvent } from "../_shared/audit.ts";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -261,6 +262,22 @@ Deno.serve(async (req: Request): Promise<Response> => {
   }
 
   // ── 9. Return session summary ────────────────────────────────────────────
+  // ── Audit: log count.completed event (fire-and-forget) ────────────────
+  void logAuditEvent({
+    adminClient,
+    user_id: user.id,
+    business_id,
+    event_type: "count.completed",
+    table_name: "stock_count_sessions",
+    record_id: session_id,
+    details: {
+      total_skus,
+      total_variance,
+      variance_value,
+    },
+    ip_address: extractIp(req),
+  });
+
   return json({
     session_id,
     status: "completed",

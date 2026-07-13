@@ -45,6 +45,7 @@
  */
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { extractIp, logAuditEvent } from "../_shared/audit.ts";
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -317,6 +318,24 @@ Deno.serve(async (req: Request): Promise<Response> => {
       return json({ error: "Failed to create pending adjustment" }, 500);
     }
 
+    // ── Audit: adjustment submitted for approval ──────────────────────────
+    void logAuditEvent({
+      adminClient,
+      user_id: caller.id,
+      business_id,
+      event_type: "adjustment.created",
+      table_name: "inventory_adjustments_pending",
+      record_id: pendingRow.adjustment_id,
+      details: {
+        status: "pending_approval",
+        reason_code,
+        quantity_delta,
+        sku_id,
+        location_id,
+      },
+      ip_address: extractIp(req),
+    });
+
     return json(
       {
         status: "pending_approval",
@@ -381,6 +400,24 @@ Deno.serve(async (req: Request): Promise<Response> => {
   }
 
   // ── 10. Return success ───────────────────────────────────────────────────
+  // ── Audit: log adjustment.created event (fire-and-forget) ─────────────
+  void logAuditEvent({
+    adminClient,
+    user_id: caller.id,
+    business_id,
+    event_type: "adjustment.created",
+    table_name: "inventory_movements",
+    record_id: movement.movement_id,
+    details: {
+      status: "applied",
+      reason_code,
+      quantity_delta,
+      sku_id,
+      location_id,
+    },
+    ip_address: extractIp(req),
+  });
+
   return json(
     {
       status: "applied",

@@ -26,6 +26,7 @@
  */
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { extractIp, logAuditEvent } from "../_shared/audit.ts";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -131,6 +132,17 @@ Deno.serve(async (req: Request): Promise<Response> => {
     business_id: data.business_id,
     role: data.role,
   };
+
+  // ── Audit: log sign-in event (fire-and-forget) ───────────────────────────
+  // We use the service-role client already constructed above.
+  void logAuditEvent({
+    adminClient: supabase,
+    user_id,
+    business_id: data.business_id,
+    event_type: "auth.sign_in",
+    details: { role: data.role },
+    ip_address: extractIp(req),
+  });
 
   return new Response(
     JSON.stringify({ claims: enrichedClaims }),

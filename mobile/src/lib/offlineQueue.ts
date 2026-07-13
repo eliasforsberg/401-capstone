@@ -86,3 +86,30 @@ export function markActionFailed(id: string): void {
   );
   writeQueue(updated);
 }
+
+/**
+ * Increment the `retryCount` for a specific action and reset its status back
+ * to `'pending'` so it will be retried on the next sync pass.
+ */
+export function incrementRetryCount(id: string): void {
+  const current = readQueue();
+  const updated = current.map((action) =>
+    action.id === id
+      ? { ...action, retryCount: action.retryCount + 1, status: 'pending' as const }
+      : action
+  );
+  writeQueue(updated);
+}
+
+/**
+ * Re-insert a previously dequeued action at the back of the queue.
+ * Used when an action must be kept for retry after a transient server error.
+ */
+export function requeueAction(action: OfflineAction): void {
+  const current = readQueue();
+  // Avoid duplicates — only add if not already present
+  if (!current.some((a) => a.id === action.id)) {
+    current.push(action);
+    writeQueue(current);
+  }
+}

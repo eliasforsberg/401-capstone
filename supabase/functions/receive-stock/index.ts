@@ -39,6 +39,7 @@
  */
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { extractIp, logAuditEvent } from "../_shared/audit.ts";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -422,5 +423,21 @@ Deno.serve(async (req: Request): Promise<Response> => {
   // ------------------------------------------------------------------
   // 8. Return success
   // ------------------------------------------------------------------
+  // ── Audit: log inventory.movement event (fire-and-forget) ───────────────
+  void logAuditEvent({
+    adminClient,
+    user_id: user.id,
+    business_id,
+    event_type: "inventory.movement",
+    table_name: "inventory_movements",
+    details: {
+      action: "receive",
+      movement_ids: insertedMovementIds,
+      po_id: po_id ?? null,
+      line_count: lines.length,
+    },
+    ip_address: extractIp(req),
+  });
+
   return jsonResponse({ status: "ok", movement_ids: insertedMovementIds });
 });

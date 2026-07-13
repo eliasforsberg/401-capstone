@@ -33,6 +33,7 @@ import type { Product } from '@/hooks/useProducts';
 import { useSuppliers } from '@/hooks/useSuppliers';
 import { useBalance, useMovementHistory } from '@/hooks/useInventory';
 import type { InventoryMovement } from '@/lib/inventoryService';
+import { getCachedProductById } from '@/lib/catalogCache';
 import { useAuthStore } from '@/stores/authStore';
 import { supabase } from '@/lib/supabase';
 
@@ -169,6 +170,8 @@ export default function ProductDetailScreen() {
   // derive balance from the inventory_balances table via a direct Supabase query.
   const [currentQty, setCurrentQty] = useState<number>(0);
   const [balanceLoading, setBalanceLoading] = useState(true);
+  const [balanceSyncedAt, setBalanceSyncedAt] = useState<string | null>(null);
+  const [balanceFromCache, setBalanceFromCache] = useState(false);
 
   const { data: movements, isLoading: movementsLoading } = useMovementHistory(skuId, {
     limit: 10,
@@ -190,22 +193,52 @@ export default function ProductDetailScreen() {
     }
   }, [product]);
 
-  // Load balance directly (no locationId required for MVP single-store)
+  // Load balance — network first; fall back to MMKV catalog cache when offline.
+  // When showing a cached balance, track `balanceSyncedAt` so the UI can
+  // display "balance as of [time]" (Requirement 13.3).
   useEffect(() => {
     if (!skuId) return;
     setBalanceLoading(true);
+
     const businessId = useAuthStore.getState().businessId;
+
     supabase
       .from('inventory_balances')
       .select('quantity')
       .eq('sku_id', skuId)
       .eq('business_id', businessId)
       .maybeSingle()
-      .then(({ data }) => {
-        setCurrentQty(data ? Number(data.quantity) : 0);
+      .then(({ data, error }) => {
+        if (!error && data != null) {
+          // Network success — fresh balance
+          setCurrentQty(Number(data.quantity));
+          setBalanceSyncedAt(null);
+          setBalanceFromCache(false);
+        } else {
+          // Network unavailable or no row — fall back to MMKV cache
+          const cached = getCachedProductById(skuId);
+          if (cached) {
+            setCurrentQty(cached.balance);
+            setBalanceSyncedAt(cached.balanceSyncedAt);
+            setBalanceFromCache(true);
+          } else {
+            setCurrentQty(0);
+            setBalanceSyncedAt(null);
+            setBalanceFromCache(false);
+          }
+        }
         setBalanceLoading(false);
       })
-      .catch(() => setBalanceLoading(false));
+      .catch(() => {
+        // Fetch threw — treat as offline
+        const cached = getCachedProductById(skuId);
+        if (cached) {
+          setCurrentQty(cached.balance);
+          setBalanceSyncedAt(cached.balanceSyncedAt);
+          setBalanceFromCache(true);
+        }
+        setBalanceLoading(false);
+      });
   }, [skuId]);
 
   // Load barcodes
@@ -320,6 +353,12 @@ export default function ProductDetailScreen() {
                 <Text style={styles.balanceUnit}>{product.unit_of_measure}</Text>
                 {isOutOfStock && <Text style={styles.balanceStatusOos}>OUT OF STOCK</Text>}
                 {isLowStock && <Text style={styles.balanceStatusLow}>LOW STOCK</Text>}
+                {/* Show stale-data notice when balance is served from MMKV cache (offline) */}
+                {balanceFromCache && balanceSyncedAt && (
+                  <Text style={styles.balanceStaleBadge}>
+                    Balance as of {formatDate(balanceSyncedAt)} (offline)
+                  </Text>
+                )}
               </>
             )}
           </View>
@@ -475,6 +514,7 @@ const styles = StyleSheet.create({
   balanceUnit: { fontSize: 16, color: '#6b7280', marginTop: 4 },
   balanceStatusLow: { marginTop: 8, fontSize: 12, fontWeight: '700', color: '#d97706', letterSpacing: 0.8, textTransform: 'uppercase' },
   balanceStatusOos: { marginTop: 8, fontSize: 12, fontWeight: '700', color: '#dc2626', letterSpacing: 0.8, textTransform: 'uppercase' },
+  balanceStaleBadge: { marginTop: 10, fontSize: 12, color: '#92400E', backgroundColor: '#FEF3C7', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 6, overflow: 'hidden', fontStyle: 'italic' },
   saveButton: { backgroundColor: '#6366f1', borderRadius: 8, paddingHorizontal: 16, paddingVertical: 7, minWidth: 60, alignItems: 'center' },
   saveButtonPressed: { opacity: 0.8 },
   saveButtonText: { color: '#ffffff', fontWeight: '700', fontSize: 14 },

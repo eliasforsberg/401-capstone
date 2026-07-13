@@ -13,8 +13,10 @@ import {
 } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 
+import { generateIdempotencyKey } from '@/lib/idempotency';
 import { supabase } from '@/lib/supabase';
 import { useAuthStore } from '@/stores/authStore';
+import { useOfflineQueueStore } from '@/stores/offlineQueueStore';
 import type { PurchaseOrderStatus } from '@/types';
 
 // ---------------------------------------------------------------------------
@@ -61,10 +63,6 @@ function formatDate(iso: string | null): string {
     day: 'numeric',
     year: 'numeric',
   });
-}
-
-function generateIdempotencyKey(): string {
-  return `${Date.now()}-${Math.random().toString(36).slice(2)}`;
 }
 
 async function checkConnectivity(): Promise<boolean> {
@@ -258,6 +256,7 @@ function POLineCard({
 export default function ReceivePOScreen() {
   const { poId } = useLocalSearchParams<{ poId: string }>();
   const businessId = useAuthStore((s) => s.businessId);
+  const enqueue = useOfflineQueueStore((s) => s.enqueue);
 
   const [header, setHeader] = useState<PurchaseOrderHeader | null>(null);
   const [lines, setLines] = useState<POLine[]>([]);
@@ -409,7 +408,26 @@ export default function ReceivePOScreen() {
       const idempotencyKey = generateIdempotencyKey();
 
       if (!isOnline) {
-        // Mark as pending sync — offline queue handled by task 15.2
+        // Enqueue action to the offline queue (Requirement 2.8, 13.2)
+        enqueue({
+          id: idempotencyKey,
+          type: 'receive',
+          payload: {
+            po_id: poId ?? null,
+            lines: [
+              {
+                sku_id: line.sku_id,
+                received_qty: receivedQty,
+                damaged_qty: damagedQty,
+                unit_cost: unitCost ?? null,
+              },
+            ],
+          },
+          createdAt: new Date().toISOString(),
+          retryCount: 0,
+          status: 'pending',
+        });
+        // Show "Pending sync" badge on this line
         setPendingSyncIds((prev) => new Set(prev).add(line.po_line_id));
         Alert.alert(
           'Offline',
@@ -459,7 +477,7 @@ export default function ReceivePOScreen() {
         });
       }
     },
-    [forms, poId, fetchPO]
+    [forms, poId, fetchPO, enqueue]
   );
 
   // ---------------------------------------------------------------------------

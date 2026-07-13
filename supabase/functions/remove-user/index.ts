@@ -28,6 +28,7 @@
  */
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { extractIp, logAuditEvent } from "../_shared/audit.ts";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -197,6 +198,16 @@ Deno.serve(async (req: Request): Promise<Response> => {
       signOutError.message,
     );
   }
+
+  // ── Audit: log remove-user event (fire-and-forget) ───────────────────────
+  void logAuditEvent({
+    adminClient,
+    user_id: callerId,
+    business_id: businessId,
+    event_type: "auth.remove_user",
+    details: { removed_user_id: targetUserId },
+    ip_address: extractIp(req),
+  });
 
   return json({ message: "User removed successfully" }, 200);
 });

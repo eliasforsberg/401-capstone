@@ -28,6 +28,7 @@
  */
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { extractIp, logAuditEvent } from "../_shared/audit.ts";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -197,6 +198,22 @@ Deno.serve(async (req: Request): Promise<Response> => {
       200,
     );
   }
+
+  // ── Audit: log adjustment.approved event (fire-and-forget) ────────────
+  void logAuditEvent({
+    adminClient,
+    user_id: callerId,
+    business_id: callerBusinessId,
+    event_type: "adjustment.approved",
+    table_name: "inventory_movements",
+    record_id: movement.movement_id,
+    details: {
+      adjustment_id,
+      sku_id: adjustment.sku_id,
+      quantity_delta: adjustment.quantity_delta,
+    },
+    ip_address: extractIp(req),
+  });
 
   return json({ success: true, movement_id: movement.movement_id }, 200);
 });

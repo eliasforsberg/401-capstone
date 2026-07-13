@@ -9,6 +9,7 @@
     "web": "expo start --web",
     "test": "jest --runInBand",
     "test:watch": "jest --watch",
+    "test:rls": "jest --runInBand --testPathPattern='\\.(integration|rls)\\.test\\.ts$'",
     "lint": "expo lint",
     "typecheck": "tsc --noEmit"
   },

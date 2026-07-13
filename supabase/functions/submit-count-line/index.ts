@@ -34,6 +34,7 @@
  */
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { extractIp, logAuditEvent } from "../_shared/audit.ts";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -300,6 +301,25 @@ Deno.serve(async (req: Request): Promise<Response> => {
   }
 
   // ── 11. Return success ───────────────────────────────────────────────────
+  // ── Audit: log inventory.movement event when a correction was created ──
+  if (movement_id !== undefined) {
+    void logAuditEvent({
+      adminClient,
+      user_id: user.id,
+      business_id,
+      event_type: "inventory.movement",
+      table_name: "inventory_movements",
+      record_id: movement_id,
+      details: {
+        action: "count_correction",
+        sku_id,
+        variance,
+        session_id,
+      },
+      ip_address: extractIp(req),
+    });
+  }
+
   const responseBody: Record<string, unknown> = {
     variance,
     count_line_id: countLine.count_line_id,

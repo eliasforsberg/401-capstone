@@ -34,8 +34,10 @@ import {
 } from 'react-native';
 
 import { SUPABASE_URL } from '@/lib/constants';
+import { generateIdempotencyKey } from '@/lib/idempotency';
 import { supabase } from '@/lib/supabase';
 import { useAuthStore } from '@/stores/authStore';
+import { useOfflineQueueStore } from '@/stores/offlineQueueStore';
 
 // ---------------------------------------------------------------------------
 // Constants — Requirement 5.1
@@ -55,21 +57,29 @@ const REASON_CODES = [
 type ReasonCode = typeof REASON_CODES[number]['value'];
 
 // ---------------------------------------------------------------------------
-// Idempotency key generator
+// Connectivity helper (same pattern used in receive and count screens)
 // ---------------------------------------------------------------------------
 
-function generateIdempotencyKey(): string {
-  // Combines timestamp and random hex to create a collision-resistant key.
-  const ts = Date.now().toString(36);
-  const rand = Math.random().toString(36).slice(2, 10);
-  return `adj-${ts}-${rand}`;
+async function checkConnectivity(): Promise<boolean> {
+  try {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 3000);
+    const response = await fetch('https://www.google.com', {
+      method: 'HEAD',
+      signal: controller.signal,
+    });
+    clearTimeout(timeoutId);
+    return response.ok;
+  } catch {
+    return false;
+  }
 }
 
 // ---------------------------------------------------------------------------
 // Types
 // ---------------------------------------------------------------------------
 
-type ScreenView = 'form' | 'pending_approval' | 'success';
+type ScreenView = 'form' | 'pending_approval' | 'pending_sync' | 'success';
 
 // ---------------------------------------------------------------------------
 // Reason code picker
@@ -145,6 +155,37 @@ const pickerStyles = StyleSheet.create({
     fontWeight: '700',
   },
 });
+
+// ---------------------------------------------------------------------------
+// Pending-sync confirmation view (offline queue)
+// ---------------------------------------------------------------------------
+
+function PendingSyncView({ delta, onBack }: { delta: number; onBack: () => void }) {
+  const sign = delta >= 0 ? '+' : '';
+  return (
+    <View style={confirmStyles.container}>
+      <View style={confirmStyles.iconWrap}>
+        <Text style={confirmStyles.icon}>⏳</Text>
+      </View>
+      <Text style={confirmStyles.title}>Pending Sync</Text>
+      <Text style={confirmStyles.body}>
+        You&apos;re offline. The adjustment of{' '}
+        <Text style={confirmStyles.boldDelta}>
+          {sign}{delta}
+        </Text>{' '}
+        units has been saved locally and will sync automatically when you reconnect.
+      </Text>
+      <TouchableOpacity
+        style={confirmStyles.btn}
+        onPress={onBack}
+        accessibilityRole="button"
+        accessibilityLabel="Return to product detail"
+      >
+        <Text style={confirmStyles.btnText}>Back to Product</Text>
+      </TouchableOpacity>
+    </View>
+  );
+}
 
 // ---------------------------------------------------------------------------
 // Pending-approval confirmation view
@@ -274,6 +315,7 @@ export default function AdjustStockScreen() {
   }>();
   const router = useRouter();
   const businessId = useAuthStore((s) => s.businessId);
+  const enqueue = useOfflineQueueStore((s) => s.enqueue);
 
   // ── Form state ─────────────────────────────────────────────────────────
   const [reasonCode, setReasonCode] = useState<ReasonCode | null>(null);
@@ -368,6 +410,30 @@ export default function AdjustStockScreen() {
     const delta = parseInt(quantityInput, 10);
     const idempotencyKey = generateIdempotencyKey();
 
+    // Check connectivity before attempting network call (Requirement 13.2)
+    const isOnline = await checkConnectivity();
+
+    if (!isOnline) {
+      // Enqueue for later sync when back online (Requirements 13.1, 13.2)
+      enqueue({
+        id: idempotencyKey,
+        type: 'adjustment',
+        payload: {
+          sku_id: skuId,
+          location_id: locationId ?? null,
+          quantity_delta: delta,
+          reason_code: reasonCode,
+          notes: notes.trim() || null,
+        },
+        createdAt: new Date().toISOString(),
+        retryCount: 0,
+        status: 'pending',
+      });
+      setAppliedDelta(delta);
+      setView('pending_sync');
+      return;
+    }
+
     setSubmitting(true);
     try {
       const {
@@ -420,7 +486,7 @@ export default function AdjustStockScreen() {
     } finally {
       setSubmitting(false);
     }
-  }, [validate, skuId, businessId, quantityInput, reasonCode, notes, locationId]);
+  }, [validate, skuId, businessId, quantityInput, reasonCode, notes, locationId, enqueue]);
 
   // ── Back navigation ─────────────────────────────────────────────────────
   const handleBack = useCallback(() => {
@@ -434,6 +500,9 @@ export default function AdjustStockScreen() {
   // ── Render confirmation views ────────────────────────────────────────────
   if (view === 'pending_approval') {
     return <PendingApprovalView onBack={handleBack} />;
+  }
+  if (view === 'pending_sync') {
+    return <PendingSyncView delta={appliedDelta} onBack={handleBack} />;
   }
   if (view === 'success') {
     return <SuccessView delta={appliedDelta} onBack={handleBack} />;

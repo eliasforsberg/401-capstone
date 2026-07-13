@@ -10,6 +10,7 @@
     "ios": "npm --workspace=mobile run ios",
     "android": "npm --workspace=mobile run android",
     "test": "npm --workspace=mobile run test",
+    "test:rls": "npm --workspace=mobile run test:rls",
     "typecheck": "npm --workspace=mobile run typecheck",
     "lint": "npm --workspace=mobile run lint",
     "supabase:start": "supabase start",
