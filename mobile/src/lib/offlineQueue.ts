@@ -26,11 +26,16 @@ interface QueueStorage {
 
 function createStorage(): QueueStorage {
   if (Platform.OS !== 'web') {
-    // eslint-disable-next-line @typescript-eslint/no-require-imports
-    const { MMKV } = require('react-native-mmkv') as typeof import('react-native-mmkv');
-    return new MMKV({ id: 'offline-queue' });
+    try {
+      // eslint-disable-next-line @typescript-eslint/no-require-imports
+      const { MMKV } = require('react-native-mmkv') as typeof import('react-native-mmkv');
+      return new MMKV({ id: 'offline-queue' });
+    } catch (e) {
+      // MMKV JSI unavailable — fall back to in-memory
+      console.warn('[offlineQueue] MMKV unavailable, using in-memory storage:', e);
+    }
   }
-  // In-memory fallback for web
+  // In-memory fallback for web or when MMKV is unavailable
   const store = new Map<string, string>();
   return {
     getString: (key) => store.get(key) ?? null,
