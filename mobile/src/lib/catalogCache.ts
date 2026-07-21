@@ -30,11 +30,16 @@ interface CatalogStorage {
 
 function createCatalogStorage(): CatalogStorage {
   if (Platform.OS !== 'web') {
-    // eslint-disable-next-line @typescript-eslint/no-require-imports
-    const { MMKV } = require('react-native-mmkv') as typeof import('react-native-mmkv');
-    return new MMKV({ id: 'product-catalog' });
+    try {
+      // eslint-disable-next-line @typescript-eslint/no-require-imports
+      const { MMKV } = require('react-native-mmkv') as typeof import('react-native-mmkv');
+      return new MMKV({ id: 'product-catalog' });
+    } catch (e) {
+      // MMKV JSI unavailable — fall back to in-memory
+      console.warn('[catalogCache] MMKV unavailable, using in-memory storage:', e);
+    }
   }
-  // In-memory fallback for web
+  // In-memory fallback for web or when MMKV is unavailable
   const store = new Map<string, string>();
   return {
     getString: (key) => store.get(key),

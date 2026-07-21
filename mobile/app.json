@@ -28,7 +28,8 @@
       "bundler": "metro"
     },
     "plugins": [
-      "expo-router"
+      "expo-router",
+      "./plugins/fix-fmt-consteval"
     ],
     "scheme": "ai-inventory-manager",
     "experiments": {
