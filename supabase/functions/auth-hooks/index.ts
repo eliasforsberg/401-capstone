@@ -1,32 +1,11 @@
 /**
  * auth-hooks Edge Function — Custom Access Token Hook
  *
- * HOW TO REGISTER IN SUPABASE DASHBOARD:
- * 1. Go to Supabase Dashboard → Authentication → Hooks
- * 2. Under "Customize Access Token (JWT) Claims", click "Add hook"
- * 3. Select "Supabase Edge Functions" as the hook type
- * 4. Choose this function: "auth-hooks"
- * 5. Save. From that point on, every new JWT issued on sign-in or token
- *    refresh will have `business_id` and `role` injected as top-level claims.
- *
- * REQUIRED ENVIRONMENT VARIABLES (set in Supabase Dashboard → Edge Functions → Secrets):
- *   SUPABASE_URL              — Your project URL (auto-set in hosted env)
- *   SUPABASE_SERVICE_ROLE_KEY — Service role key (auto-set in hosted env)
- *
- * REQUEST FORMAT (sent by Supabase Auth):
- *   POST /auth-hooks
- *   Body: {
- *     user_id: string,
- *     claims: Record<string, unknown>   // existing JWT payload
- *   }
- *
- * RESPONSE FORMAT:
- *   200 OK  → { claims: Record<string, unknown> }   // mutated claims
- *   401     → { error: string }                     // unregistered user
+ * Injects `business_id` and `role` into the JWT claims on every sign-in
+ * and token refresh by looking up the user_roles table.
  */
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-import { extractIp, logAuditEvent } from "../_shared/audit.ts";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -74,9 +53,6 @@ Deno.serve(async (req: Request): Promise<Response> => {
     });
   }
 
-  // Build a service-role Supabase client so we can query user_roles without
-  // RLS restrictions (the user does not yet have a JWT with claims at this
-  // point in the auth flow).
   const supabaseUrl = Deno.env.get("SUPABASE_URL");
   const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
 
@@ -90,15 +66,12 @@ Deno.serve(async (req: Request): Promise<Response> => {
 
   const supabase = createClient(supabaseUrl, serviceRoleKey, {
     auth: {
-      // Prevent the client from trying to persist a session server-side
       persistSession: false,
       autoRefreshToken: false,
     },
   });
 
-  // Query the user_roles table for this user's business association and role.
-  // The UNIQUE (user_id, business_id) constraint means at most one row per
-  // business; MVP supports a single business per user.
+  // Query user_roles for this user's business and role
   const { data, error } = await supabase
     .from("user_roles")
     .select("business_id, role")
@@ -113,8 +86,6 @@ Deno.serve(async (req: Request): Promise<Response> => {
     );
   }
 
-  // If there is no user_roles entry the user is not yet registered in any
-  // business — reject authentication with 401 per Requirements 9.1 / 12.2.
   if (!data) {
     console.warn(`auth-hooks: user ${user_id} has no user_roles entry — rejecting`);
     return new Response(
@@ -123,32 +94,30 @@ Deno.serve(async (req: Request): Promise<Response> => {
     );
   }
 
-  // Inject business_id and role as top-level JWT claims so that Supabase RLS
-  // policies can reference them via:
-  //   (auth.jwt() ->> 'business_id')::uuid
-  //   (auth.jwt() ->> 'role')
+  // Inject business_id and user_role into JWT claims.
+  // IMPORTANT: Do NOT overwrite the top-level "role" claim — Supabase Auth
+  // requires it to remain "authenticated". Use "user_role" for app-level role.
   const enrichedClaims: Record<string, unknown> = {
     ...claims,
     business_id: data.business_id,
-    role: data.role,
+    user_role: data.role,
   };
 
-  // ── Audit: log sign-in event (fire-and-forget) ───────────────────────────
-  // We use the service-role client already constructed above.
-  void logAuditEvent({
-    adminClient: supabase,
-    user_id,
-    business_id: data.business_id,
-    event_type: "auth.sign_in",
-    details: { role: data.role },
-    ip_address: extractIp(req),
-  });
+  // Fire-and-forget audit log
+  try {
+    await supabase.from("audit_log").insert({
+      user_id,
+      business_id: data.business_id,
+      event_type: "auth.sign_in",
+      details: { role: data.role },
+      ip_address: req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ?? null,
+    });
+  } catch (e) {
+    console.error("auth-hooks: audit log failed:", e);
+  }
 
   return new Response(
     JSON.stringify({ claims: enrichedClaims }),
-    {
-      status: 200,
-      headers: { "Content-Type": "application/json" },
-    },
+    { status: 200, headers: { "Content-Type": "application/json" } },
   );
 });

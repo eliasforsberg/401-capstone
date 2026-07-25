@@ -35,7 +35,7 @@ function extractClaims(accessToken: string): {
   const payload = decodeJwtPayload(accessToken);
   const businessId =
     typeof payload['business_id'] === 'string' ? payload['business_id'] : null;
-  const rawRole = payload['role'];
+  const rawRole = payload['user_role'];
   const role: UserRole | null =
     rawRole === 'owner' ||
     rawRole === 'staff' ||

@@ -103,13 +103,12 @@ enable_confirmations = false
 
 [auth.email.smtp]
 # SenderName is the "From" name in outgoing emails. Default is "Supabase".
-# admin_email = "admin@email.com"
-# sender_name = "My Supabase Project"
-# host = "smtp.sendgrid.net"
-# port = 587
-# user = "apikey"
-# pass = "env(SENDGRID_API_KEY)"
-# admin_email = "admin@email.com"
+admin_email = "admin@email.com"
+sender_name = "AI Inventory Manager"
+host = "smtp.sendgrid.net"
+port = 587
+user = "apikey"
+pass = "env(SENDGRID_API_KEY)"
 
 [auth.sms]
 enable_signup = false
