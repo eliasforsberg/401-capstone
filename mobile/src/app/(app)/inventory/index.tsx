@@ -8,7 +8,7 @@
  */
 
 import { useRouter } from 'expo-router';
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
   FlatList,
@@ -19,8 +19,7 @@ import {
   View,
 } from 'react-native';
 
-import { useProducts } from '@/hooks/useProducts';
-import type { Product } from '@/hooks/useProducts';
+import { useStockOnHand } from '@/hooks/useInventory';
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -29,25 +28,40 @@ import type { Product } from '@/hooks/useProducts';
 const PAGE_SIZE = 20;
 
 // ---------------------------------------------------------------------------
+// Types
+// ---------------------------------------------------------------------------
+
+/** Lightweight product info used in the list view. */
+interface InventoryListItem {
+  product_id: string;
+  sku: string;
+  name: string;
+  description: string | null;
+  category: string | null;
+  unit_of_measure: string;
+  reorder_point: number;
+  quantity: number;
+}
+
+// ---------------------------------------------------------------------------
 // Sub-components
 // ---------------------------------------------------------------------------
 
 interface ProductRowProps {
-  item: Product & { quantity?: number };
+  item: InventoryListItem;
   onPress: () => void;
 }
 
 function ProductRow({ item, onPress }: ProductRowProps) {
-  const isLowStock =
-    item.quantity !== undefined && item.quantity <= item.reorder_point;
-  const isOutOfStock = item.quantity !== undefined && item.quantity <= 0;
+  const isLowStock = item.quantity <= item.reorder_point;
+  const isOutOfStock = item.quantity <= 0;
 
   return (
     <TouchableOpacity
       style={styles.row}
       onPress={onPress}
       accessibilityRole="button"
-      accessibilityLabel={`${item.name}, SKU ${item.sku}, quantity ${item.quantity ?? '—'}`}
+      accessibilityLabel={`${item.name}, SKU ${item.sku}, quantity ${item.quantity}`}
     >
       <View style={styles.rowInfo}>
         <Text style={styles.productName} numberOfLines={1}>
@@ -68,7 +82,7 @@ function ProductRow({ item, onPress }: ProductRowProps) {
             !isOutOfStock && isLowStock && styles.quantityLow,
           ]}
         >
-          {item.quantity ?? '—'}
+          {item.quantity}
         </Text>
         <Text style={styles.quantityLabel}>on hand</Text>
       </View>
@@ -85,14 +99,36 @@ export default function InventoryIndexScreen() {
   const [search, setSearch] = useState('');
   const [page, setPage] = useState(1);
 
-  const { data, isLoading, isFetching, refetch } = useProducts({
-    page,
-    pageSize: PAGE_SIZE,
-    search: search.trim() || undefined,
-  });
+  const { data: stockItems, isLoading, isFetching, refetch } = useStockOnHand();
 
-  const products = data?.products ?? [];
-  const hasMore = data ? page < data.totalPages : false;
+  // Client-side search filtering
+  const filtered = useMemo(() => {
+    const items = stockItems ?? [];
+    const term = search.trim().toLowerCase();
+    if (!term) return items;
+    return items.filter(
+      (i) =>
+        i.product.name.toLowerCase().includes(term) ||
+        i.product.sku.toLowerCase().includes(term) ||
+        (i.product.description ?? '').toLowerCase().includes(term),
+    );
+  }, [stockItems, search]);
+
+  // Client-side pagination
+  const products: InventoryListItem[] = useMemo(() => {
+    return filtered.slice(0, page * PAGE_SIZE).map((i) => ({
+      product_id: i.product.product_id,
+      sku: i.product.sku,
+      name: i.product.name,
+      description: i.product.description ?? null,
+      category: i.product.category ?? null,
+      unit_of_measure: i.product.unit_of_measure,
+      reorder_point: i.product.reorder_point,
+      quantity: i.balance,
+    }));
+  }, [filtered, page]);
+
+  const hasMore = filtered.length > page * PAGE_SIZE;
 
   const handleLoadMore = useCallback(() => {
     if (!isFetching && hasMore) {
@@ -122,7 +158,7 @@ export default function InventoryIndexScreen() {
   }, [router]);
 
   const renderItem = useCallback(
-    ({ item }: { item: Product }) => (
+    ({ item }: { item: InventoryListItem }) => (
       <ProductRow
         item={item}
         onPress={() => handleRowPress(item.product_id)}
