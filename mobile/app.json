@@ -29,7 +29,8 @@
     },
     "plugins": [
       "expo-router",
-      "./plugins/fix-fmt-consteval"
+      "./plugins/fix-fmt-consteval",
+      "expo-web-browser"
     ],
     "scheme": "ai-inventory-manager",
     "experiments": {
