@@ -18,6 +18,7 @@ ALTER TABLE audit_log ENABLE ROW LEVEL SECURITY;
 -- SELECT — owners can read their business's audit feed
 -- ---------------------------------------------------------------------------
 
+DROP POLICY IF EXISTS "audit_log_select_owner" ON audit_log;
 CREATE POLICY "audit_log_select_owner"
   ON audit_log
   FOR SELECT
@@ -31,6 +32,7 @@ CREATE POLICY "audit_log_select_owner"
 --          The service-role client (Edge Functions) bypasses RLS entirely.
 -- ---------------------------------------------------------------------------
 
+DROP POLICY IF EXISTS "audit_log_insert_deny" ON audit_log;
 CREATE POLICY "audit_log_insert_deny"
   ON audit_log
   FOR INSERT
@@ -40,6 +42,7 @@ CREATE POLICY "audit_log_insert_deny"
 -- UPDATE — explicitly blocked (append-only)
 -- ---------------------------------------------------------------------------
 
+DROP POLICY IF EXISTS "audit_log_update_deny" ON audit_log;
 CREATE POLICY "audit_log_update_deny"
   ON audit_log
   FOR UPDATE
@@ -49,6 +52,7 @@ CREATE POLICY "audit_log_update_deny"
 -- DELETE — explicitly blocked (append-only)
 -- ---------------------------------------------------------------------------
 
+DROP POLICY IF EXISTS "audit_log_delete_deny" ON audit_log;
 CREATE POLICY "audit_log_delete_deny"
   ON audit_log
   FOR DELETE

@@ -9,8 +9,8 @@
 -- Returns a single row with the following KPI columns:
 --   total_stock_units     — sum of all current on-hand quantities
 --   total_inventory_value — sum of (balance * cost_price) per SKU
---   low_stock_count       — distinct SKUs with active low_stock alert
---   stockout_count        — distinct SKUs with active stockout alert
+--   low_stock_count       — SKUs where on-hand quantity is at or below reorder_point (but > 0)
+--   stockout_count        — SKUs where on-hand quantity is at or below zero
 --   sell_through_rate_30d — (units sold last 30d) / (avg on-hand + units sold) * 100
 --   shrink_rate_30d       — (abs shrinkage units last 30d) / (units received last 30d) * 100
 --   gross_sales_30d       — sum of (abs(quantity_delta) * product.selling_price) for sale movements last 30d
@@ -56,14 +56,16 @@ BEGIN
     FROM balances
   ),
 
-  -- Active alert counts
-  alert_counts AS (
+  -- Low stock and stockout counts computed directly from balances vs reorder_point
+  -- (matches the logic in the low-stock report screen)
+  stock_alerts AS (
     SELECT
-      COUNT(*) FILTER (WHERE alert_type = 'low_stock')   AS low_stock_cnt,
-      COUNT(*) FILTER (WHERE alert_type = 'stockout')    AS stockout_cnt
-    FROM alerts
-    WHERE business_id = p_business_id
-      AND status = 'active'
+      COUNT(*) FILTER (WHERE ib.quantity <= 0)                          AS stockout_cnt,
+      COUNT(*) FILTER (WHERE ib.quantity <= p.reorder_point)            AS low_stock_cnt
+    FROM inventory_balances ib
+    JOIN products p ON p.product_id = ib.sku_id
+    WHERE ib.business_id = p_business_id
+      AND p.is_active = true
   ),
 
   -- Units sold in last 30 days (sale movements have negative quantity_delta)
@@ -123,9 +125,9 @@ BEGIN
     t.total_units,
     -- Total inventory value (WAC-based)
     t.total_value,
-    -- Active alert counts
-    ac.low_stock_cnt,
-    ac.stockout_cnt,
+    -- Low stock / stockout counts (balance-based, matches report)
+    sa.low_stock_cnt,
+    sa.stockout_cnt,
     -- Sell-through rate: sold / (avg_on_hand + sold) * 100
     -- avg_on_hand approximated as current balance; avoids storing historical snapshots
     CASE
@@ -141,7 +143,7 @@ BEGIN
     gs.gross_sales_amt
 
   FROM totals t
-  CROSS JOIN alert_counts ac
+  CROSS JOIN stock_alerts sa
   CROSS JOIN total_sold ts
   CROSS JOIN received_30d r
   CROSS JOIN shrinkage_30d s

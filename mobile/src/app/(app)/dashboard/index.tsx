@@ -185,7 +185,7 @@ export default function DashboardScreen() {
           <KPICard
             title="Low Stock SKUs"
             value={String(kpis.low_stock_count)}
-            subtitle="active alerts"
+            subtitle="at or below reorder point"
             accentColor={kpis.low_stock_count > 0 ? '#FF9500' : '#8E8E93'}
             isAlert={kpis.low_stock_count > 0}
             onPress={() => router.push('/(app)/reports/low-stock' as never)}
