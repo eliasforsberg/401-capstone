@@ -176,6 +176,15 @@ export function useCreateProduct() {
     mutationFn: async (input: CreateProductInput) => {
       if (!businessId) throw new Error('Not authenticated');
 
+      // 0. Clear the SKU on any soft-deleted product that would conflict with
+      //    the UNIQUE (business_id, sku) constraint.
+      await supabase
+        .from('products')
+        .update({ sku: `__deleted_${Date.now()}_${input.sku}` })
+        .eq('business_id', businessId)
+        .eq('sku', input.sku)
+        .eq('is_active', false);
+
       // 1. Insert the product
       const { data, error } = await supabase
         .from('products')
