@@ -128,6 +128,11 @@ function NewProductForm({ businessId }: { businessId: string }) {
   // Step state: 1 | 2 | 3 | 4
   const [step, setStep] = useState<1 | 2 | 3 | 4>(1);
 
+  // SKU uniqueness state
+  const [skuConflict, setSkuConflict] = useState<string | null>(null);
+  const [skuChecking, setSkuChecking] = useState(false);
+  const [skuConfirmed, setSkuConfirmed] = useState(false);
+
   // Barcode state
   const [barcodeValue, setBarcodeValue] = useState('');
   const [barcodeManualInput, setBarcodeManualInput] = useState('');
@@ -171,7 +176,44 @@ function NewProductForm({ businessId }: { businessId: string }) {
     },
   });
 
-  const nameValue = watch('name');
+  // ---- SKU uniqueness check ----
+  const checkSkuUniqueness = useCallback(
+    async (value: string) => {
+      if (!value.trim()) {
+        setSkuConflict(null);
+        setSkuConfirmed(false);
+        return;
+      }
+      setSkuChecking(true);
+      setSkuConflict(null);
+      setSkuConfirmed(false);
+
+      try {
+        const { data, error } = await supabase
+          .from('products')
+          .select('sku, name')
+          .eq('business_id', businessId)
+          .eq('sku', value.trim())
+          .eq('is_active', true)
+          .maybeSingle();
+
+        if (error) throw error;
+
+        if (data) {
+          setSkuConflict(`SKU already used by "${data.name}".`);
+          setSkuConfirmed(false);
+        } else {
+          setSkuConflict(null);
+          setSkuConfirmed(true);
+        }
+      } catch {
+        setSkuConflict('Could not verify SKU. Please try again.');
+      } finally {
+        setSkuChecking(false);
+      }
+    },
+    [businessId],
+  );
 
   // ---- Auto-suggest SKU from name ----
   const handleNameChange = useCallback(
@@ -179,7 +221,11 @@ function NewProductForm({ businessId }: { businessId: string }) {
       fieldOnChange(name);
       const currentSku = getValues('sku');
       if (!currentSku || currentSku === slugifyName(getValues('name'))) {
-        setValue('sku', slugifyName(name));
+        const newSku = slugifyName(name);
+        setValue('sku', newSku);
+        // Reset SKU uniqueness state when auto-suggested value changes
+        setSkuConflict(null);
+        setSkuConfirmed(false);
       }
     },
     [getValues, setValue],
@@ -190,6 +236,43 @@ function NewProductForm({ businessId }: { businessId: string }) {
     let valid = false;
     if (step === 1) {
       valid = await trigger(['sku', 'name', 'unit_of_measure']);
+      if (valid && skuConflict) {
+        // Already know there's a conflict
+        valid = false;
+      } else if (valid && !skuConfirmed) {
+        // SKU hasn't been checked yet — verify before advancing
+        const skuValue = getValues('sku').trim();
+        if (!skuValue) {
+          valid = false;
+        } else {
+          setSkuChecking(true);
+          try {
+            const { data, error } = await supabase
+              .from('products')
+              .select('sku, name')
+              .eq('business_id', businessId)
+              .eq('sku', skuValue)
+              .eq('is_active', true)
+              .maybeSingle();
+
+            if (error) throw error;
+
+            if (data) {
+              setSkuConflict(`SKU already used by "${data.name}".`);
+              setSkuConfirmed(false);
+              valid = false;
+            } else {
+              setSkuConflict(null);
+              setSkuConfirmed(true);
+            }
+          } catch {
+            setSkuConflict('Could not verify SKU. Please try again.');
+            valid = false;
+          } finally {
+            setSkuChecking(false);
+          }
+        }
+      }
     } else if (step === 2) {
       valid = await trigger(['reorder_point', 'reorder_quantity', 'safety_stock']);
     } else if (step === 3) {
@@ -197,7 +280,7 @@ function NewProductForm({ businessId }: { businessId: string }) {
       valid = true;
     }
     if (valid) setStep((s) => (s < 4 ? ((s + 1) as 1 | 2 | 3 | 4) : s));
-  }, [step, trigger]);
+  }, [step, trigger, skuConflict, skuConfirmed, getValues, businessId]);
 
   const goBack = useCallback(() => {
     if (step > 1) setStep((s) => (s - 1) as 1 | 2 | 3 | 4);
@@ -508,18 +591,41 @@ function NewProductForm({ businessId }: { businessId: string }) {
               name="sku"
               render={({ field: { onChange, onBlur, value } }) => (
                 <TextInput
-                  style={[styles.input, errors.sku && styles.inputError]}
+                  style={[styles.input, (errors.sku || skuConflict) && styles.inputError]}
                   placeholder="Auto-suggested from name"
                   placeholderTextColor="#9ca3af"
                   autoCapitalize="characters"
-                  onBlur={onBlur}
-                  onChangeText={onChange}
+                  onBlur={() => {
+                    onBlur();
+                    checkSkuUniqueness(value);
+                  }}
+                  onChangeText={(v) => {
+                    onChange(v);
+                    setSkuConflict(null);
+                    setSkuConfirmed(false);
+                  }}
                   value={value}
                   accessibilityLabel="Product SKU"
                 />
               )}
             />
             {errors.sku && <Text style={styles.fieldError}>{errors.sku.message}</Text>}
+            {skuChecking && (
+              <View style={styles.row}>
+                <ActivityIndicator size="small" color="#2563eb" style={{ marginRight: 6 }} />
+                <Text style={styles.hint}>Checking SKU availability…</Text>
+              </View>
+            )}
+            {skuConflict && (
+              <View style={styles.conflictBanner}>
+                <Text style={styles.conflictText}>⚠ {skuConflict}</Text>
+              </View>
+            )}
+            {skuConfirmed && !skuConflict && (
+              <View style={styles.successBanner}>
+                <Text style={styles.successBannerText}>✓ SKU is available.</Text>
+              </View>
+            )}
 
             <Text style={styles.label}>Description</Text>
             <Controller
