@@ -38,6 +38,7 @@ import { generateIdempotencyKey } from '@/lib/idempotency';
 import { supabase } from '@/lib/supabase';
 import { useAuthStore } from '@/stores/authStore';
 import { useOfflineQueueStore } from '@/stores/offlineQueueStore';
+import { useProduct } from '@/hooks/useProducts';
 
 // ---------------------------------------------------------------------------
 // Constants — Requirement 5.1
@@ -317,6 +318,9 @@ export default function AdjustStockScreen() {
   const businessId = useAuthStore((s) => s.businessId);
   const enqueue = useOfflineQueueStore((s) => s.enqueue);
 
+  // Fetch product info so we can display the real SKU and name
+  const { data: product } = useProduct(skuId);
+
   // ── Form state ─────────────────────────────────────────────────────────
   const [reasonCode, setReasonCode] = useState<ReasonCode | null>(null);
   const [quantityInput, setQuantityInput] = useState('');
@@ -410,6 +414,25 @@ export default function AdjustStockScreen() {
     const delta = parseInt(quantityInput, 10);
     const idempotencyKey = generateIdempotencyKey();
 
+    // Resolve location_id — required by the adjust-stock Edge Function.
+    // Try current state first; fall back to querying the first active location.
+    let resolvedLocationId = locationId;
+    if (!resolvedLocationId) {
+      const { data: locData } = await supabase
+        .from('locations')
+        .select('location_id')
+        .eq('business_id', businessId)
+        .eq('is_active', true)
+        .limit(1)
+        .maybeSingle();
+      resolvedLocationId = locData?.location_id ?? null;
+    }
+
+    if (!resolvedLocationId) {
+      Alert.alert('Configuration error', 'No active location found for your business.');
+      return;
+    }
+
     // Check connectivity before attempting network call (Requirement 13.2)
     const isOnline = await checkConnectivity();
 
@@ -420,7 +443,7 @@ export default function AdjustStockScreen() {
         type: 'adjustment',
         payload: {
           sku_id: skuId,
-          location_id: locationId ?? null,
+          location_id: resolvedLocationId,
           quantity_delta: delta,
           reason_code: reasonCode,
           notes: notes.trim() || null,
@@ -450,9 +473,9 @@ export default function AdjustStockScreen() {
         quantity_delta: delta,
         reason_code: reasonCode,
         idempotency_key: idempotencyKey,
+        location_id: resolvedLocationId,
       };
 
-      if (locationId) body.location_id = locationId;
       if (notes.trim()) body.notes = notes.trim();
 
       const response = await fetch(`${SUPABASE_URL}/functions/v1/adjust-stock`, {
@@ -533,9 +556,18 @@ export default function AdjustStockScreen() {
         {/* Screen title */}
         <View style={styles.titleSection}>
           <Text style={styles.screenTitle}>Adjust Stock</Text>
-          {skuId ? (
+          {product ? (
+            <>
+              <Text style={styles.screenSubtitle} numberOfLines={1}>
+                {product.name}
+              </Text>
+              <Text style={styles.screenSubtitle} numberOfLines={1}>
+                SKU: {product.sku}
+              </Text>
+            </>
+          ) : skuId ? (
             <Text style={styles.screenSubtitle} numberOfLines={1}>
-              SKU: {skuId}
+              Loading…
             </Text>
           ) : null}
         </View>

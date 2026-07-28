@@ -162,7 +162,9 @@ export function useProduct(productId: string) {
 
 /**
  * Mutation to INSERT a new product.
- * Invalidates the products list on success.
+ * After creation, seeds a zero-quantity inventory movement so the product
+ * immediately appears in stock-on-hand views and dashboard KPIs.
+ * Invalidates both product and stock-on-hand query caches on success.
  *
  * Requirements: 7.1, 8.2
  */
@@ -174,6 +176,7 @@ export function useCreateProduct() {
     mutationFn: async (input: CreateProductInput) => {
       if (!businessId) throw new Error('Not authenticated');
 
+      // 1. Insert the product
       const { data, error } = await supabase
         .from('products')
         .insert({
@@ -184,10 +187,41 @@ export function useCreateProduct() {
         .single();
 
       if (error) throw error;
-      return data as Product;
+      const product = data as Product;
+
+      // 2. Seed a zero-balance inventory movement so the product appears in
+      //    inventory_balances (and thus in stock-on-hand / dashboard queries).
+      try {
+        const { data: locationData } = await supabase
+          .from('locations')
+          .select('location_id')
+          .eq('business_id', businessId)
+          .eq('is_active', true)
+          .limit(1)
+          .maybeSingle();
+
+        if (locationData?.location_id) {
+          await supabase.from('inventory_movements').insert({
+            business_id: businessId,
+            location_id: locationData.location_id,
+            sku_id: product.product_id,
+            quantity_delta: 0,
+            movement_type: 'adjustment',
+            source: 'system',
+            notes: 'Initial zero-balance seed on product creation',
+          });
+        }
+      } catch (seedErr) {
+        // Non-fatal — product was created successfully; balance will appear
+        // once the first real movement is recorded.
+        console.warn('[useCreateProduct] Failed to seed initial balance:', seedErr);
+      }
+
+      return product;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: PRODUCTS_QUERY_KEY });
+      queryClient.invalidateQueries({ queryKey: ['stock-on-hand', businessId] });
     },
   });
 }
