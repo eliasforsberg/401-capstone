@@ -32,6 +32,7 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
+import { useQueryClient } from '@tanstack/react-query';
 
 import { SUPABASE_URL } from '@/lib/constants';
 import { generateIdempotencyKey } from '@/lib/idempotency';
@@ -317,6 +318,7 @@ export default function AdjustStockScreen() {
   const router = useRouter();
   const businessId = useAuthStore((s) => s.businessId);
   const enqueue = useOfflineQueueStore((s) => s.enqueue);
+  const queryClient = useQueryClient();
 
   // Fetch product info so we can display the real SKU and name
   const { data: product } = useProduct(skuId);
@@ -498,7 +500,10 @@ export default function AdjustStockScreen() {
       if (json.status === 'pending_approval') {
         setView('pending_approval');
       } else {
-        // status = 'applied'
+        // status = 'applied' — invalidate inventory caches so lists reflect the change
+        queryClient.invalidateQueries({ queryKey: ['stock-on-hand'] });
+        queryClient.invalidateQueries({ queryKey: ['balance', skuId] });
+        queryClient.invalidateQueries({ queryKey: ['movements', skuId] });
         setView('success');
       }
     } catch (err) {
@@ -509,7 +514,7 @@ export default function AdjustStockScreen() {
     } finally {
       setSubmitting(false);
     }
-  }, [validate, skuId, businessId, quantityInput, reasonCode, notes, locationId, enqueue]);
+  }, [validate, skuId, businessId, quantityInput, reasonCode, notes, locationId, enqueue, queryClient]);
 
   // ── Back navigation ─────────────────────────────────────────────────────
   const handleBack = useCallback(() => {
