@@ -31,11 +31,12 @@ import {
 import { useProduct, useUpdateProduct } from '@/hooks/useProducts';
 import type { Product } from '@/hooks/useProducts';
 import { useSuppliers } from '@/hooks/useSuppliers';
-import { useBalance, useMovementHistory } from '@/hooks/useInventory';
+import { useMovementHistory } from '@/hooks/useInventory';
 import type { InventoryMovement } from '@/lib/inventoryService';
 import { getCachedProductById } from '@/lib/catalogCache';
 import { useAuthStore } from '@/stores/authStore';
 import { supabase } from '@/lib/supabase';
+import { useQueryClient } from '@tanstack/react-query';
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -229,7 +230,7 @@ export default function ProductDetailScreen() {
         }
         setBalanceLoading(false);
       })
-      .catch(() => {
+      .then(undefined, () => {
         // Fetch threw — treat as offline
         const cached = getCachedProductById(skuId);
         if (cached) {
@@ -291,6 +292,44 @@ export default function ProductDetailScreen() {
   const handleAdjustStock = useCallback(() => {
     router.push(`/(app)/inventory/adjust?skuId=${skuId}`);
   }, [router, skuId]);
+
+  const queryClient = useQueryClient();
+
+  const handleDeleteProduct = useCallback(() => {
+    Alert.alert(
+      'Delete Product',
+      `Are you sure you want to remove "${product?.name ?? 'this product'}" from inventory? This cannot be undone.`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              const { error } = await supabase
+                .from('products')
+                .update({ is_active: false, updated_at: new Date().toISOString() })
+                .eq('product_id', skuId);
+
+              if (error) throw error;
+
+              // Invalidate caches so the product disappears from lists
+              queryClient.invalidateQueries({ queryKey: ['products'] });
+              queryClient.invalidateQueries({ queryKey: ['stock-on-hand'] });
+
+              Alert.alert('Deleted', 'Product has been removed from inventory.');
+              router.replace('/(app)/inventory');
+            } catch (err) {
+              Alert.alert(
+                'Error',
+                err instanceof Error ? err.message : 'Failed to delete product.',
+              );
+            }
+          },
+        },
+      ],
+    );
+  }, [skuId, product, queryClient, router]);
 
   // Loading / error states
   if (productLoading) {
@@ -475,6 +514,13 @@ export default function ProductDetailScreen() {
           </TouchableOpacity>
         </View>
 
+        {/* Delete product button */}
+        <View style={styles.deleteButtonContainer}>
+          <TouchableOpacity style={styles.deleteButton} onPress={handleDeleteProduct} accessibilityRole="button" accessibilityLabel="Delete product from inventory">
+            <Text style={styles.deleteButtonText}>Delete Product</Text>
+          </TouchableOpacity>
+        </View>
+
         <View style={styles.bottomPadding} />
       </ScrollView>
     </KeyboardAvoidingView>
@@ -542,5 +588,8 @@ const styles = StyleSheet.create({
   adjustButtonContainer: { marginTop: 24, paddingHorizontal: 16 },
   adjustButton: { backgroundColor: '#111827', borderRadius: 12, paddingVertical: 16, alignItems: 'center' },
   adjustButtonText: { color: '#ffffff', fontSize: 16, fontWeight: '700' },
+  deleteButtonContainer: { marginTop: 12, paddingHorizontal: 16 },
+  deleteButton: { backgroundColor: '#fee2e2', borderRadius: 12, paddingVertical: 16, alignItems: 'center', borderWidth: 1, borderColor: '#fca5a5' },
+  deleteButtonText: { color: '#dc2626', fontSize: 16, fontWeight: '700' },
   bottomPadding: { height: 40 },
 });

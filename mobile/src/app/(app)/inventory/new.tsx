@@ -298,7 +298,7 @@ function NewProductForm({ businessId }: { businessId: string }) {
       try {
         const { data, error } = await supabase
           .from('product_barcodes')
-          .select('barcode_value, products(name)')
+          .select('barcode_value, product_id, products!inner(name, is_active)')
           .eq('business_id', businessId)
           .eq('barcode_value', value.trim())
           .maybeSingle();
@@ -306,10 +306,24 @@ function NewProductForm({ businessId }: { businessId: string }) {
         if (error) throw error;
 
         if (data) {
-          const productName =
-            (data.products as { name: string } | null)?.name ?? 'another product';
-          setBarcodeConflict(`Already assigned to "${productName}". Tap to view.`);
-          setBarcodeConfirmed(false);
+          const product = data.products as unknown as { name: string; is_active: boolean } | null;
+
+          if (product?.is_active) {
+            // Barcode belongs to an active product — genuine conflict
+            setBarcodeConflict(`Already assigned to "${product.name}". Tap to view.`);
+            setBarcodeConfirmed(false);
+          } else {
+            // Barcode belongs to a deleted (inactive) product — free it up
+            await supabase
+              .from('product_barcodes')
+              .delete()
+              .eq('business_id', businessId)
+              .eq('barcode_value', value.trim());
+
+            setBarcodeConflict(null);
+            setBarcodeConfirmed(true);
+            setBarcodeValue(value.trim());
+          }
         } else {
           setBarcodeConflict(null);
           setBarcodeConfirmed(true);
