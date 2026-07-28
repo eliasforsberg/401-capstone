@@ -11,7 +11,7 @@
  * Requirements: 7.1, 7.2, 7.3, 7.4, 15.2
  */
 
-import { CameraView, Camera, type BarcodeScanningResult } from 'expo-camera';
+import { CameraView, Camera, type BarcodeScanningResult, type BarcodeType } from 'expo-camera';
 import { router } from 'expo-router';
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import {
@@ -37,8 +37,8 @@ import { useProducts, type Product } from '@/hooks/useProducts';
 // Constants
 // ---------------------------------------------------------------------------
 
-/** Supported barcode formats (expo-camera v16 / SDK 52 string identifiers). */
-const BARCODE_TYPES: BarcodeScanningResult['type'][] = [
+/** Supported barcode formats. */
+const BARCODE_TYPES: BarcodeType[] = [
   'qr',
   'ean13',
   'ean8',
@@ -47,7 +47,7 @@ const BARCODE_TYPES: BarcodeScanningResult['type'][] = [
   'code128',
   'code39',
   'datamatrix',
-] as BarcodeScanningResult['type'][];
+];
 
 /** Minimum ms between processing consecutive scans (debounce). */
 const SCAN_DEBOUNCE_MS = 1500;

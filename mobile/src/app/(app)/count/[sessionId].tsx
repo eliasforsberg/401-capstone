@@ -11,7 +11,7 @@
  *  - "Cancel Session" warns user before calling cancel-count-session
  */
 
-import { CameraView, Camera, type BarcodeScanningResult } from 'expo-camera';
+import { CameraView, Camera, type BarcodeScanningResult, type BarcodeType } from 'expo-camera';
 import { router, useLocalSearchParams } from 'expo-router';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
@@ -94,9 +94,9 @@ async function checkConnectivity(): Promise<boolean> {
 }
 
 /** Barcode scanning formats accepted. */
-const BARCODE_TYPES: BarcodeScanningResult['type'][] = [
+const BARCODE_TYPES: BarcodeType[] = [
   'qr', 'ean13', 'ean8', 'upc_a', 'upc_e', 'code128', 'code39', 'datamatrix',
-] as BarcodeScanningResult['type'][];
+];
 
 const SCAN_DEBOUNCE_MS = 1500;
 
