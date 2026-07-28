@@ -115,9 +115,9 @@ export default function AppLayout() {
       <Tabs.Screen name="dashboard" options={{ title: 'Dashboard' }} />
       <Tabs.Screen name="inventory" options={{ title: 'Inventory' }} />
       <Tabs.Screen name="receive" options={{ title: 'Receive' }} />
-      <Tabs.Screen name="count" options={{ title: 'Count' }} />
+      <Tabs.Screen name="count" options={{ title: 'Count', href: null }} />
       <Tabs.Screen name="orders" options={{ title: 'Orders' }} />
-      <Tabs.Screen name="recommendations" options={{ title: 'Reorder' }} />
+      <Tabs.Screen name="recommendations" options={{ title: 'Reorder', href: null }} />
       <Tabs.Screen name="reports" options={{ title: 'Reports' }} />
       <Tabs.Screen name="alerts" options={{ title: 'Alerts' }} />
 
@@ -152,6 +152,8 @@ export default function AppLayout() {
 
       {/* ---- settings — hidden from main tab bar ---- */}
       <Tabs.Screen name="settings" options={{ title: 'Settings', href: null }} />
+      <Tabs.Screen name="settings/team" options={{ href: null, title: 'Team' }} />
+      <Tabs.Screen name="settings/invite" options={{ href: null, title: 'Invite' }} />
 
       {/* ---- admin routes — hidden from tab bar, Owner only ---- */}
       <Tabs.Screen name="admin/square-events" options={{ href: null, title: 'Square Events' }} />
