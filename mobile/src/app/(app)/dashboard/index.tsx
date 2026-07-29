@@ -1,5 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
-import { useRouter } from 'expo-router';
+import { useFocusEffect, useRouter } from 'expo-router';
+import { useCallback } from 'react';
 import {
   ActivityIndicator,
   ScrollView,
@@ -117,6 +118,13 @@ export default function DashboardScreen() {
     staleTime: 60_000, // 1 minute
     refetchOnWindowFocus: true,
   });
+
+  // Refetch KPIs whenever the dashboard gains focus so totals stay current
+  useFocusEffect(
+    useCallback(() => {
+      refetch();
+    }, [refetch])
+  );
 
   if (!businessId) {
     return (

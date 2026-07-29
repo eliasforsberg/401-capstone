@@ -12,7 +12,7 @@
  * Requirements: 4.4, 7.8
  */
 
-import { useLocalSearchParams, useRouter } from 'expo-router';
+import { useLocalSearchParams, useRouter, useFocusEffect } from 'expo-router';
 import React, { useCallback, useEffect, useState } from 'react';
 import {
   ActivityIndicator,
@@ -179,6 +179,7 @@ export default function ProductDetailScreen() {
   });
   const { data: suppliers } = useSuppliers();
   const updateProduct = useUpdateProduct();
+  const queryClient = useQueryClient();
 
   const [form, setForm] = useState<ReorderSettings>({
     reorder_point: '', reorder_quantity: '', safety_stock: '', lead_time_days: '', default_supplier_id: '',
@@ -197,7 +198,7 @@ export default function ProductDetailScreen() {
   // Load balance — network first; fall back to MMKV catalog cache when offline.
   // When showing a cached balance, track `balanceSyncedAt` so the UI can
   // display "balance as of [time]" (Requirement 13.3).
-  useEffect(() => {
+  const fetchBalance = useCallback(() => {
     if (!skuId) return;
     setBalanceLoading(true);
 
@@ -241,6 +242,16 @@ export default function ProductDetailScreen() {
         setBalanceLoading(false);
       });
   }, [skuId]);
+
+  // Re-fetch balance on mount and whenever the screen regains focus
+  // (e.g. returning from the Adjust Stock screen).
+  useFocusEffect(
+    useCallback(() => {
+      fetchBalance();
+      // Also refresh movements list so new adjustments appear immediately
+      queryClient.invalidateQueries({ queryKey: ['movements', skuId] });
+    }, [fetchBalance, queryClient, skuId])
+  );
 
   // Load barcodes
   useEffect(() => {
@@ -292,8 +303,6 @@ export default function ProductDetailScreen() {
   const handleAdjustStock = useCallback(() => {
     router.push(`/(app)/inventory/adjust?skuId=${skuId}`);
   }, [router, skuId]);
-
-  const queryClient = useQueryClient();
 
   const handleDeleteProduct = useCallback(() => {
     Alert.alert(

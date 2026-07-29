@@ -1,5 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
-import { useState } from 'react';
+import { useFocusEffect } from 'expo-router';
+import { useCallback, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -122,6 +123,13 @@ export default function StockOnHandScreen() {
     enabled: !!businessId,
     staleTime: 30_000,
   });
+
+  // Refetch when screen gains focus so new products/adjustments appear
+  useFocusEffect(
+    useCallback(() => {
+      refetch();
+    }, [refetch])
+  );
 
   const totalValue = (data ?? []).reduce((sum, r) => sum + r.total_value, 0);
   const totalUnits = (data ?? []).reduce((sum, r) => sum + r.balance, 0);

@@ -231,6 +231,7 @@ export function useCreateProduct() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: PRODUCTS_QUERY_KEY });
       queryClient.invalidateQueries({ queryKey: ['stock-on-hand', businessId] });
+      queryClient.invalidateQueries({ queryKey: ['report-stock-on-hand', businessId] });
     },
   });
 }

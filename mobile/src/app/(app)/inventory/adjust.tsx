@@ -345,6 +345,19 @@ export default function AdjustStockScreen() {
 
   const notesRef = useRef<TextInput>(null);
 
+  // ── Reset form when navigating to a different product ───────────────────
+  useEffect(() => {
+    setView('form');
+    setReasonCode(null);
+    setQuantityInput('');
+    setNotes('');
+    setReasonError('');
+    setQuantityError('');
+    setNotesError('');
+    setSubmitting(false);
+    setAppliedDelta(0);
+  }, [skuId]);
+
   // ── Load current balance ────────────────────────────────────────────────
   useEffect(() => {
     if (!skuId || !businessId) return;
@@ -502,6 +515,7 @@ export default function AdjustStockScreen() {
       } else {
         // status = 'applied' — invalidate inventory caches so lists reflect the change
         queryClient.invalidateQueries({ queryKey: ['stock-on-hand'] });
+        queryClient.invalidateQueries({ queryKey: ['report-stock-on-hand'] });
         queryClient.invalidateQueries({ queryKey: ['balance', skuId] });
         queryClient.invalidateQueries({ queryKey: ['movements', skuId] });
         setView('success');
