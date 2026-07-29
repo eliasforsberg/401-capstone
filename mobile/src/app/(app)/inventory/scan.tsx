@@ -12,7 +12,7 @@
  */
 
 import { CameraView, Camera, type BarcodeScanningResult, type BarcodeType } from 'expo-camera';
-import { router } from 'expo-router';
+import { router, useFocusEffect } from 'expo-router';
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import {
   View,
@@ -87,6 +87,14 @@ export default function ScanScreen() {
       setHasPermission(status === 'granted');
     })();
   }, []);
+
+  // ---- re-enable scanning when screen regains focus (e.g. navigating back) ----
+  useFocusEffect(
+    useCallback(() => {
+      setScanning(true);
+      setIsResolving(false);
+    }, [])
+  );
 
   // ---- debounce search input ----
   useEffect(() => {

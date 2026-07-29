@@ -16,7 +16,6 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import React, { useCallback, useEffect, useState } from 'react';
 import {
   ActivityIndicator,
-  KeyboardAvoidingView,
   Platform,
   Pressable,
   ScrollView,
@@ -358,8 +357,8 @@ export default function ProductDetailScreen() {
     suppliers?.find((s) => s.supplier_id === product.default_supplier_id)?.name ?? '—';
 
   return (
-    <KeyboardAvoidingView style={styles.flex} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-      <ScrollView style={styles.container} contentContainerStyle={styles.scrollContent} keyboardShouldPersistTaps="handled">
+    <View style={styles.flex}>
+      <ScrollView style={styles.container} contentContainerStyle={styles.scrollContent} keyboardShouldPersistTaps="handled" keyboardDismissMode="on-drag" automaticallyAdjustKeyboardInsets={true}>
 
         {/* Back navigation */}
         <TouchableOpacity style={styles.backRow} onPress={() => router.back()} accessibilityRole="button" accessibilityLabel="Go back to inventory list">
@@ -523,7 +522,7 @@ export default function ProductDetailScreen() {
 
         <View style={styles.bottomPadding} />
       </ScrollView>
-    </KeyboardAvoidingView>
+    </View>
   );
 }
 
