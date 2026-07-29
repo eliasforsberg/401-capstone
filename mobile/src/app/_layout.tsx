@@ -1,6 +1,7 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { Stack } from 'expo-router';
 import { useEffect } from 'react';
+import { Keyboard, Pressable, StyleSheet } from 'react-native';
 
 import { useAuthStore } from '@/stores/authStore';
 
@@ -43,7 +44,17 @@ function AppLayout() {
 export default function RootLayout() {
   return (
     <QueryClientProvider client={queryClient}>
-      <AppLayout />
+      <Pressable
+        style={styles.flex}
+        onPress={Keyboard.dismiss}
+        accessible={false}
+      >
+        <AppLayout />
+      </Pressable>
     </QueryClientProvider>
   );
 }
+
+const styles = StyleSheet.create({
+  flex: { flex: 1 },
+});
